@@ -1,0 +1,17 @@
+{
+  "description": "precode — requires a documentation baseline before the first code write.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/docs-gate.mjs",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

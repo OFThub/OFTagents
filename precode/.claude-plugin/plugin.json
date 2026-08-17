@@ -1,0 +1,17 @@
+{
+  "name": "precode",
+  "version": "0.1.0",
+  "description": "Requires a documentation baseline before the first code write, and generates the industry-standard markdown doc set for the project.",
+  "author": {
+    "name": "OFT",
+    "email": "oturkdogdu1@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": [
+    "documentation",
+    "markdown",
+    "readme",
+    "changelog",
+    "scaffolding"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "_comment": "Single source of truth. Both the PreToolUse gate (scripts/docs-gate.mjs) and the mdfile skill read this file. Changing the required doc set is a data edit, never a code edit.",
+
+  "core": [
+    "README.md",
+    "CLAUDE.md",
+    "CHANGELOG.md"
+  ],
+
+  "_allowExtensions": "Writes to these extensions are never blocked. Removing .md deadlocks the gate: it would block the very documents it demands.",
+  "allowExtensions": [
+    ".md",
+    ".markdown"
+  ],
+
+  "_allowFilenames": "Matched case-insensitively against the basename. Project manifests are here so the skill has something to profile on a greenfield project instead of asking the user everything.",
+  "allowFilenames": [
+    "LICENSE",
+    "LICENSE.txt",
+    "LICENCE",
+    "NOTICE",
+    "package.json",
+    "pyproject.toml",
+    "go.mod",
+    "Cargo.toml",
+    "composer.json",
+    "Gemfile",
+    "pom.xml",
+    "build.gradle",
+    "build.gradle.kts",
+    "requirements.txt",
+    "pubspec.yaml"
+  ],
+
+  "_stateFile": "Written only by `/precode:docs skip`, never by the gate. Relative to the project root. Safe to commit: it is a team-wide decision.",
+  "stateFile": ".claude/precode.json"
+}

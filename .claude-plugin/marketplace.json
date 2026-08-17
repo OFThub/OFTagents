@@ -1,0 +1,27 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "oftagents",
+  "description": "OFTagents — agent plugins by OFT",
+  "owner": {
+    "name": "OFT",
+    "email": "oturkdogdu1@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "precode",
+      "description": "Blocks the first code write in an undocumented project and generates the industry-standard markdown doc set for it.",
+      "source": "./precode",
+      "category": "documentation",
+      "author": {
+        "name": "OFT"
+      },
+      "keywords": [
+        "documentation",
+        "markdown",
+        "readme",
+        "changelog",
+        "scaffolding"
+      ]
+    }
+  ]
+}

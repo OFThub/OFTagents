@@ -1,0 +1,16 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude Code local state
+.claude/settings.local.json
+
+# Note: .claude/precode.json is intentionally NOT ignored.
+# It records a deliberate team-wide decision to disable the documentation gate,
+# so it belongs in version control.
