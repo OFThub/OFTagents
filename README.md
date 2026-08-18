@@ -229,3 +229,20 @@ Bu kurallar zevk meselesi değil; her biri yaşanmış bir arıza sınıfını k
 
 </sub>
 </div>
+
+## 🤝 Katkı ve topluluk
+
+| Belge | Ne için |
+| --- | --- |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Geliştirme kurulumu, commit üslubu, PR öncesi kontrol listesi ve **bozulmaması gereken kurallar** |
+| [SECURITY.md](SECURITY.md) | Güvenlik açığı bildirimi (GitHub Security Advisory) ve tehdit modeli |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Contributor Covenant 2.1 |
+| [.github/](.github/) | Issue ve pull request şablonları |
+
+Kurulum adımı yok, bağımlılık yok — depoyu klonlayıp testi çalıştırmak yeterli:
+
+```bash
+git clone https://github.com/OFThub/OFTagents.git
+cd OFTagents
+node precode/scripts/docs-gate.test.mjs
+```
