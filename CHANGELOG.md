@@ -14,7 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   write into a project with no documentation baseline.
 - `mdfile` skill — detects missing documentation, profiles the project before asking
   anything, and generates each document against its published standard.
-- `/precode:docs` command with `check`, `init`, `skip` and `unskip`.
+- `SessionStart` check — on a fresh conversation in an undocumented project, precode asks
+  the user **once** whether to create the baseline. Declining silences both the question and
+  the gate for that session; the marker lives in the OS temp directory, never in the project.
+  Fires only on `startup` and `clear`: re-asking after `resume` or `compact` would repeat a
+  question the user already answered.
+- `/precode:docs` command with `check`, `init`, `later`, `skip` and `unskip`.
 - Shared `config/required-docs.json` so the gate and the skill can never disagree about
   which documents are required.
 - Document templates for the core, open-source and complex tiers.

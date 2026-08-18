@@ -2,19 +2,20 @@
 
 # precode
 
-### Dokümansız projeye kod yazılmasını **bir kez** engelleyen kapı
+### Oturum başında bir kez sorar, cevap alınmazsa ilk kod yazımını engeller
 
-Bir `PreToolUse` hook'u *ne zaman*'ı, bir skill *nasıl*'ı halleder.
-Dokümanlar oluştuğunda kapı bir daha rahatsız etmez.
+Dokümansız bir projede oturum açtığınızda **bir kez** sorar: kuralım mı?
+"Hayır" derseniz o oturum boyunca ne sorar ne engeller. Dokümanlar oluşursa bir daha görünmez.
 
 <br/>
 
 [![Version](https://img.shields.io/badge/version-0.1.0-blue)](.claude-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](../LICENSE)
 ![Hook](https://img.shields.io/badge/hook-PreToolUse-D97757)
-![Tests](https://img.shields.io/badge/tests-11%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-18%20passing-brightgreen)
 ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
-![Writes](https://img.shields.io/badge/kap%C4%B1%20yazma-yok-brightgreen)
+![Ask](https://img.shields.io/badge/soru-oturumda%201%20kez-brightgreen)
+![Writes](https://img.shields.io/badge/projeye%20yazma-yok-brightgreen)
 
 </div>
 
@@ -37,13 +38,35 @@ yazılmaz ya da çok geç yazılır.
 Bunu tek başına bir skill çözemez — skill'leri Claude kendi takdirine göre yükler. Garanti
 ancak bir hook ile mümkün. `precode` bu yüzden birbirine muhtaç iki parçadan oluşur.
 
-## İki parça
+## Parçalar
 
 | Parça | Görevi | Nerede |
 | --- | --- | --- |
-| **Kapı** | *ne zaman* — `Write`/`Edit` üzerinde deterministik kontrol | `hooks/hooks.json` + `scripts/docs-gate.mjs` |
+| **Oturum sorusu** | *nazik yol* — `SessionStart`'ta bir kez sorar | `scripts/session-check.mjs` |
+| **Kapı** | *garanti* — `Write`/`Edit` üzerinde deterministik kontrol | `scripts/docs-gate.mjs` |
 | **Skill** | *nasıl* — tespit, profilleme, eksik soru, standarttan üretim | `skills/mdfile/` |
-| **Komut** | elle kontrol ve kaçış kapısı | `commands/docs.md` |
+| **Komut** | elle kontrol ve kaçış kapıları | `commands/docs.md` |
+
+## Oturum akışı
+
+```mermaid
+sequenceDiagram
+    participant U as Kullanıcı
+    participant C as Claude
+    participant P as precode
+    P->>C: SessionStart — README, CHANGELOG eksik
+    C->>U: "Dokümanları oluşturayım mı?"
+    alt Evet
+        C->>C: mdfile skill'i çalışır
+        Note over P: dokümanlar oluştu, kapı bir daha tetiklenmez
+    else Hayır
+        C->>P: --decline (oturum kimliğine yazılır)
+        Note over P: o oturumda ne sorar ne engeller
+    end
+```
+
+`SessionStart` yalnızca `startup` ve `clear` kaynaklarında sorar. `resume` ve `compact`'ta
+susar — konuşma zaten sürüyor, cevaplanmış bir soruyu tekrar sormak sizi bağlamdan koparır.
 
 ## Kapı nasıl karar verir
 
@@ -57,7 +80,9 @@ flowchart TD
     D -- evet --> OK3["İZİN — scratchpad bizi ilgilendirmez"]
     D -- hayır --> E{".claude/precode.json var mı?"}
     E -- evet --> OK4["İZİN — kullanıcı skip demiş"]
-    E -- hayır --> F{"README + CLAUDE + CHANGELOG tam mı?"}
+    E -- hayır --> E2{"bu oturumda hayır denmiş mi?"}
+    E2 -- evet --> OK6["İZİN — hayır oturum boyunca tutar"]
+    E2 -- hayır --> F{"README + CLAUDE + CHANGELOG tam mı?"}
     F -- evet --> OK5["İZİN — temel mevcut"]
     F -- hayır --> NO["RED — mdfile skill'ini çalıştır"]
 ```
@@ -93,6 +118,7 @@ enjekte edilir.
 | --- | --- | --- |
 | `/precode:docs check` | Durum raporu — hangi doküman eksik | Hayır |
 | `/precode:docs init` | `mdfile` skill'ini elle çalıştırır | Dokümanları |
+| `/precode:docs later` | Kapıyı **yalnızca bu oturum** için susturur | işletim sistemi temp'i |
 | `/precode:docs skip` | Bu proje için kapıyı kalıcı kapatır | `.claude/precode.json` |
 | `/precode:docs unskip` | Kapıyı geri açar | Durum dosyasını siler |
 

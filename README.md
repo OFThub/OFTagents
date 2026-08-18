@@ -14,7 +14,7 @@ ve onları besleyen skill'ler.
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin%20marketplace-D97757?logo=anthropic&logoColor=white)](https://docs.claude.com/en/docs/claude-code)
 ![Node](https://img.shields.io/badge/Node-%E2%89%A518-339933?logo=node.js&logoColor=white)
 ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
-![Tests](https://img.shields.io/badge/tests-11%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-18%20passing-brightgreen)
 [![Stars](https://img.shields.io/github/stars/OFThub/OFTagents?style=flat&logo=github)](https://github.com/OFThub/OFTagents/stargazers)
 
 <br/>
@@ -117,7 +117,7 @@ aynıdır.
 
 | Plugin | Ne yapar | Sürüm | Bileşenler |
 | --- | --- | --- | --- |
-| **[precode](precode/)** | Dokümansız bir projeye ilk kod yazımını engeller, sektör standardı `.md` setini ürettirir | `0.1.0` | 1 hook · 1 skill · 1 komut |
+| **[precode](precode/)** | Oturum başında bir kez sorar; cevapsız kalırsa ilk kod yazımını engeller ve sektör standardı `.md` setini ürettirir | `0.1.0` | 2 hook · 1 skill · 1 komut |
 
 ## 🧩 Yeni plugin ekleme
 
@@ -184,6 +184,7 @@ OFTagents/
     ├── config/required-docs.json      ← tek doğruluk kaynağı
     ├── hooks/hooks.json
     ├── scripts/docs-gate.mjs          ← saf decide() + ince CLI kabuğu
+    ├── scripts/session-check.mjs      ← oturum sorusu + --decline yazıcısı
     ├── scripts/docs-gate.test.mjs
     ├── commands/docs.md
     └── skills/mdfile/                 ← SKILL
@@ -203,7 +204,7 @@ kullanır ve `decide()` saf bir fonksiyon olduğu için testler diske hiç dokun
 
 | Ölçüm | Durum |
 | --- | --- |
-| Birim testi | 11 / 11 |
+| Birim testi | 18 / 18 |
 | Bağımlılık | 0 |
 | Gerekli Node | ≥ 18 |
 

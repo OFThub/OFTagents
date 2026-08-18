@@ -23,9 +23,10 @@ yok; `docs-gate.mjs` yalnızca Node yerleşiklerini kullanır.
 | `.claude-plugin/marketplace.json` | Katalog. Yeni plugin buraya kaydedilir. |
 | `precode/.claude-plugin/plugin.json` | Plugin manifest'i. |
 | `precode/config/required-docs.json` | Zorunlu doküman listesi — kapı ve skill'in ortak kaynağı. |
-| `precode/scripts/docs-gate.mjs` | Saf `decide()` + ince CLI kabuğu. |
+| `precode/scripts/docs-gate.mjs` | Saf `decide()` + `missingDocs()` + ince CLI kabuğu. |
+| `precode/scripts/session-check.mjs` | `SessionStart` sorusu + `--decline` yazıcısı. |
 | `precode/scripts/docs-gate.test.mjs` | `node:test`, framework yok, disk yok. |
-| `precode/hooks/hooks.json` | `PreToolUse: Write\|Edit` kaydı. |
+| `precode/hooks/hooks.json` | `SessionStart` + `PreToolUse: Write\|Edit` kaydı. |
 | `precode/commands/docs.md` | `/precode:docs` |
 | `precode/skills/mdfile/` | `SKILL.md` + `references/` + `assets/templates/` |
 
@@ -46,6 +47,11 @@ yok; `docs-gate.mjs` yalnızca Node yerleşiklerini kullanır.
 - `config/required-docs.json` içindeki `allowExtensions` listesinden `.md` **asla**
   çıkarılmamalı — kapı kendi talep ettiği dokümanların yazılmasını engeller ve proje
   kilitlenir. `docs-gate.test.mjs` bunu "deadlock guard" testiyle korur.
+- Oturum bazlı "hayır" kaydı **proje içine yazılmaz** — işletim sistemi temp'ine, oturum
+  kimliğine göre. Kimlik dış payload'dan gelir; `declinePath()` düz oturum kimliği olmayan
+  her şeyi reddeder, temizlemeye çalışmaz.
+- "Eksik doküman" hesabı tek yerde: `missingDocs()`. Kapı ve oturum sorusu aynı fonksiyonu
+  çağırır — ikinci bir kopya zamanla sapar ve sapmış bir kapı tatmin edilemez hale gelir.
 - Zorunlu doküman listesi `docs-gate.mjs` içine gömülmemeli. Konfigürasyondan okunur;
   ikinci bir liste yaratmak kapıyı tatmin edilemez hale getirir.
 - Hook değişiklikleri yalnızca Claude Code yeniden başlatılınca yüklenir; test etmeden

@@ -14,6 +14,7 @@
  */
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25,6 +26,28 @@ function samePath(a, b) {
   const norm = (p) =>
     process.platform === "win32" ? path.resolve(p).toLowerCase() : path.resolve(p);
   return norm(a) === norm(b);
+}
+
+/**
+ * Marker path for a session-scoped "not now". Lives in the OS temp dir, never in
+ * the user's project: a decline is per-session state, not a project decision.
+ * The id arrives from an external payload, so anything that is not a plain
+ * session id is refused outright rather than sanitised into something writable.
+ */
+export function declinePath(sessionId) {
+  if (typeof sessionId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(sessionId)) return null;
+  return path.join(os.tmpdir(), "precode-sessions", sessionId + ".declined");
+}
+
+/**
+ * Which of the required core documents are absent from the project root.
+ * One readdir beats N stats, and lowercasing makes Linux behave like Windows.
+ * Exported because the SessionStart check needs the same answer — a second
+ * copy of this rule would eventually drift from the one the gate enforces.
+ */
+export function missingDocs(config, listRoot) {
+  const present = new Set(listRoot().map((n) => n.toLowerCase()));
+  return config.core.filter((doc) => !present.has(doc.toLowerCase()));
 }
 
 function isInside(child, parent) {
@@ -40,9 +63,10 @@ function isInside(child, parent) {
  * @param {object}   o.config       parsed required-docs.json
  * @param {(p: string) => boolean} o.fileExists
  * @param {() => string[]}         o.listRoot  entry names directly under projectRoot
+ * @param {boolean}  [o.declined]  user said "not now" earlier in this session
  * @returns {{allow: true, reason: string} | {allow: false, missing: string[]}}
  */
-export function decide({ filePath, projectRoot, config, fileExists, listRoot }) {
+export function decide({ filePath, projectRoot, config, fileExists, listRoot, declined = false }) {
   // Nothing to judge — fail open rather than guess.
   if (!filePath || !projectRoot) return { allow: true, reason: "no-target" };
 
@@ -62,15 +86,17 @@ export function decide({ filePath, projectRoot, config, fileExists, listRoot }) 
     return { allow: true, reason: "outside-project" };
   }
 
-  // 3. Explicit user opt-out via `/precode:docs skip`.
+  // 3. The user already declined this session. Asking once and then blocking
+  //    anyway would make "no" meaningless, so the decline silences the gate too.
+  if (declined) return { allow: true, reason: "declined-this-session" };
+
+  // 4. Explicit user opt-out via `/precode:docs skip`.
   if (fileExists(path.join(projectRoot, config.stateFile))) {
     return { allow: true, reason: "opted-out" };
   }
 
-  // 4. The actual check. One readdir beats N stats, and lowercasing makes it
-  //    behave the same on Linux as it already does on Windows.
-  const present = new Set(listRoot().map((n) => n.toLowerCase()));
-  const missing = config.core.filter((doc) => !present.has(doc.toLowerCase()));
+  // 5. The actual check.
+  const missing = missingDocs(config, listRoot);
 
   return missing.length === 0 ? { allow: true, reason: "docs-complete" } : { allow: false, missing };
 }
@@ -83,7 +109,7 @@ export function denyPayload(missing) {
       permissionDecisionReason:
         `precode: this project has no documentation baseline. Missing: ${missing.join(", ")}. ` +
         `Invoke the "mdfile" skill to generate the project's markdown documentation, then retry this write. ` +
-        `To bypass permanently for this project: /precode:docs skip`,
+        `Not now: /precode:docs later (this session only). Permanently: /precode:docs skip`,
     },
   };
 }
@@ -111,6 +137,7 @@ async function main() {
 
   const projectRoot = process.env.CLAUDE_PROJECT_DIR || payload.cwd;
   const filePath = payload?.tool_input?.file_path;
+  const marker = declinePath(payload?.session_id);
 
   const verdict = decide({
     filePath,
@@ -124,6 +151,7 @@ async function main() {
         return [];
       }
     },
+    declined: marker ? existsSync(marker) : false,
   });
 
   // The decision travels in the JSON body, not the exit code: exit 0 either way.

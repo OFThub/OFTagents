@@ -1,6 +1,6 @@
 ---
 name: mdfile
-description: This skill should be used when the user asks to "create documentation", "set up a README", "generate a CHANGELOG", "add CONTRIBUTING", "write project docs", "this project has no docs", or when the precode gate denies a write with a missing-documentation reason. Detects which industry-standard markdown documents a project is missing, infers what it can from the project itself, asks only for what cannot be inferred, and generates each file against its published standard.
+description: This skill should be used when the user asks to "create documentation", "set up a README", "generate a CHANGELOG", "add CONTRIBUTING", "write project docs", "this project has no docs", when the precode gate denies a write with a missing-documentation reason, or when the user agrees to the documentation offer made at session start. Detects which industry-standard markdown documents a project is missing, infers what it can from the project itself, asks only for what cannot be inferred, and generates each file against its published standard.
 version: 0.1.0
 ---
 
@@ -13,6 +13,26 @@ standards rather than improvising structure.
 Documents are written in **English** regardless of conversation language — `Keep a Changelog`,
 `Contributor Covenant` and the GitHub community-health conventions are English artifacts, and
 documentation is read by people who did not join the conversation. Ask before deviating.
+
+## How this skill gets reached
+
+Three routes, and they differ in one respect only: whether the user has already agreed.
+
+| Route | Has the user agreed? |
+|---|---|
+| The session-start question — precode reports a missing baseline and Claude asks once | **Yes.** They said yes. Start at step 1 immediately; do not ask again whether to create documentation. |
+| A denied write — the gate refused a code write for missing docs | No. Offer, then proceed on agreement. |
+| Direct request or `/precode:docs init` | Yes, implicitly. Start at step 1. |
+
+If the user **declines** the session-start question, do not run this skill and do not bring
+documentation up again in that session. Record the decline so the gate honours it:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/session-check.mjs" --decline <session_id>
+```
+
+Without that command the gate would still block their first code write, and their "no"
+would have meant nothing.
 
 ## Workflow
 

@@ -1,13 +1,24 @@
 {
-  "description": "precode — requires a documentation baseline before the first code write.",
+  "description": "precode — asks once per session about the documentation baseline, and requires one before the first code write.",
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/session-check.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/docs-gate.mjs",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/docs-gate.mjs\"",
             "timeout": 10
           }
         ]

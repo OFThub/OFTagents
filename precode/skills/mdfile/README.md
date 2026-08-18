@@ -25,6 +25,24 @@ yalnızca çıkaramadığını sorar.
 
 ---
 
+## Nasıl tetiklenir
+
+| Yol | Kullanıcı onay verdi mi |
+| --- | --- |
+| **Oturum sorusu** — precode eksik dokümanları bildirir, Claude bir kez sorar | **Evet**, "evet" dedi. Doğrudan 1. adım. |
+| **Reddedilen yazma** — kapı kod yazımını engelledi | Hayır. Önce teklif edilir. |
+| **Doğrudan istek** veya `/precode:docs init` | Örtük evet. Doğrudan 1. adım. |
+
+Kullanıcı oturum sorusuna **hayır** derse skill çalışmaz ve konu o oturumda bir daha
+açılmaz. Reddi kaydetmek kapının da susmasını sağlar:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/session-check.mjs" --decline <session_id>
+```
+
+Bu komut çalıştırılmazsa kapı ilk kod yazımını yine engeller ve "hayır" hiçbir şey ifade
+etmemiş olur.
+
 ## Akış
 
 ```mermaid
