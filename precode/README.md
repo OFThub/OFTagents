@@ -37,9 +37,12 @@ projesinde izinsiz klasör açmamalı.
 ## Kurulum
 
 ```
-/plugin marketplace add C:\Projects\OFTagents
+/plugin marketplace add OFThub/OFTagents
 /plugin install precode@oftagents
 ```
+
+Tam URL de çalışır: `/plugin marketplace add https://github.com/OFThub/OFTagents`
+Yerel geliştirme için klasör yolu: `/plugin marketplace add C:\Projects\OFTagents`
 
 Sonra Claude Code'u **yeniden başlatın** — hook'lar yalnızca oturum başında yüklenir.
 `/hooks` ile `PreToolUse` girdisinin listelendiğini doğrulayabilirsiniz.

@@ -20,12 +20,22 @@ ve agent taşıyabilir; hepsi plugin kurulunca birlikte gelir.
 ## Kurulum
 
 ```
+/plugin marketplace add OFThub/OFTagents
+/plugin install precode@oftagents
+```
+
+Tam URL de çalışır: `/plugin marketplace add https://github.com/OFThub/OFTagents`
+Claude Code ikisini farklı kaydeder (`source: github` ve `source: git`), davranış aynıdır.
+
+Katalogdan değil **yerelden** geliştiriyorsanız klasör yolunu verin — push etmeden denersiniz:
+
+```
 /plugin marketplace add C:\Projects\OFTagents
 /plugin install precode@oftagents
 ```
 
-Ardından Claude Code'u **yeniden başlatın**. Hook'lar yalnızca oturum başında yüklenir;
-yeniden başlatmadan kapı devreye girmez.
+Her iki durumda da ardından Claude Code'u **yeniden başlatın**. Hook'lar yalnızca oturum
+başında yüklenir; yeniden başlatmadan kapı devreye girmez.
 
 ## Katalog
 
