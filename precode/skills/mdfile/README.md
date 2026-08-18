@@ -61,7 +61,8 @@ Bu ayrım kademeli açığa çıkarma (progressive disclosure): metadata her zam
 
 ## Yeni doküman türü ekleme
 
-1. `assets/templates/<DOSYA>.md` oluşturun, yer tutucuları `{{BUYUK_HARF}}` yazın.
+1. `assets/templates/<DOSYA>.md` oluşturun; yer tutucular `{{...}}` içine yazılır — biçim
+   serbest, çünkü sızıntı kontrolü düz `{{` araması yapar.
 2. `references/doc-catalog.md` içine bölüm sırasını ve bağlı olduğu standardı ekleyin.
 3. Zorunlu olacaksa `config/required-docs.json` → `core` dizisine ekleyin.
 

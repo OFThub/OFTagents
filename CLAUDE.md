@@ -37,7 +37,9 @@ yok; `docs-gate.mjs` yalnızca Node yerleşiklerini kullanır.
 - Kapı saf bir fonksiyondur ve **hiçbir şey yazmaz**. Yan etkisi olan bir kontrol,
   kullanıcının projesine izinsiz dosya bırakır.
 - Fail-open: kapı çökerse yazma devam eder. Bozuk bir kapı oturumu kilitlememeli.
-- Şablonlarda yer tutucular `{{BUYUK_HARF}}` biçiminde; hiçbiri çıktıya sızmamalı.
+- Şablon yer tutucuları tek biçimde değil: `{{PROJECT_NAME}}`, `{{path}}`,
+  `{{WHAT_IT_IS — one paragraph}}`. Hiçbiri çıktıya sızmamalı ve sızıntı kontrolü **daima
+  düz `{{` araması** olmalı — büyük harfe göre yazılmış bir desen çoğunu kaçırır.
 
 ## Constraints
 

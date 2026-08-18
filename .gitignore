@@ -14,3 +14,6 @@ Thumbs.db
 # Note: .claude/precode.json is intentionally NOT ignored.
 # It records a deliberate team-wide decision to disable the documentation gate,
 # so it belongs in version control.
+
+# Kişisel takip notları — projenin dokümantasyonu değil
+docs/

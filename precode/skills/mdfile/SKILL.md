@@ -73,6 +73,11 @@ file in `assets/templates/`, then fill it from the profile.
 no file: it looks like documentation and carries no information. If a placeholder cannot be
 filled from the profile or the user's answers, either ask, or drop that section entirely.
 
+Verify this rather than trusting it — after writing, search the generated files for the
+literal `{{`. Any hit means that file is not finished. Search for `{{` alone, never a cased
+pattern: placeholders are written in several forms (`{{PROJECT_NAME}}`, `{{path}}`,
+`{{WHAT_IT_IS — one paragraph}}`) and a case-sensitive pattern silently misses most of them.
+
 After writing, report what was created and what was deliberately skipped, and mention that the
 `precode` gate is now satisfied.
 
