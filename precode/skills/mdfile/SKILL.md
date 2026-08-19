@@ -34,6 +34,42 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/session-check.mjs" --decline <session_id>
 Without that command the gate would still block their first code write, and their "no"
 would have meant nothing.
 
+## Targeted mode — `--<DOCUMENT>`
+
+When the invocation carries an argument like `--CODE_OF_CONDUCT`, `--security` or
+`--RULES testing`, work on **that document only**. Skip the tier discussion entirely: the
+user has already said which file they mean.
+
+Resolve the name through the *Targeted mode — name resolution* table in
+`references/doc-catalog.md`. Matching is case-insensitive and ignores `-`, `_` and a
+trailing `.md`. An unknown name is not a silent failure — say what was given, list the
+closest rows, and stop.
+
+Then branch on whether the file already exists:
+
+| State | What to do |
+|---|---|
+| **Missing** | Profile (step 2), then generate it from its template. Ask only what the profile could not answer. |
+| **Exists** | **Improve it — never overwrite it.** |
+
+### Improving a document that already exists
+
+1. Read the file in full. It is someone's work, and most of it is probably right.
+2. Read that document's entry in `references/doc-catalog.md` and compare: which required
+   sections are absent, which are stubs, which claims are now false.
+3. Re-profile the project (step 2). Documentation rots because the project moved, so check
+   the commands, paths and versions the file names against what is actually there today.
+4. Report what you propose — sections to add, claims that no longer hold, placeholders
+   still unfilled — and what you are leaving alone, then apply it.
+5. Preserve the author's wording wherever it is still true. Rewriting a correct sentence
+   into your own phrasing is churn, not improvement, and it buries the real change in the diff.
+
+Never replace a file wholesale in this mode. If the existing document is so far from the
+standard that editing is harder than starting over, say so and ask — do not decide it alone.
+
+Four names need a second argument, because the filename is not fixed: `--SKILL <name>`,
+`--RULES <topic>`, `--ADR <title>`, `--LICENSE <spdx-id>`. Ask if it was not supplied.
+
 ## Workflow
 
 Run all four steps in order. Do not skip step 2 — it is what separates this skill from a
@@ -111,6 +147,13 @@ agreement — a hard block that also dictates a dozen files would be intolerable
 | **Core** | `README.md`, `CLAUDE.md`, `CHANGELOG.md` | always — this is the gate's bar |
 | **Open source** | `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `LICENSE`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/{bug_report,feature_request}.md` | public remote, or user says public |
 | **Complex** | `ARCHITECTURE.md`, `docs/adr/0001-record-architecture-decisions.md`, `TESTING.md` | multi-service, multi-package, or non-obvious structure |
+| **Community** | `SUPPORT.md`, `GOVERNANCE.md` | `SUPPORT.md` once questions arrive somewhere other than the tracker; `GOVERNANCE.md` only when more than one person can merge |
+| **Agent tooling** | `CLAUDE.local.md`, `MEMORY.md`, `.claude/rules/<topic>.md`, `.claude/skills/<name>/SKILL.md`, `AGENTS.md`, `.github/copilot-instructions.md` | on request, or when the repository already shows the matching setup |
+
+Never generate the agent-tooling tier speculatively. `AGENTS.md` and
+`copilot-instructions.md` each become a second copy of `CLAUDE.md` that drifts away from
+it, and `CLAUDE.local.md` is worse than useless if it is not gitignored — add the ignore
+entry in the same pass, or do not create the file.
 
 `CLAUDE.md` is in the core tier on purpose: it is what makes every later agent session in this
 repository behave. Write it from the profile — real build/test commands, real conventions
@@ -131,7 +174,9 @@ A generated document must be **true about this project**, not true in general.
 
 - **`references/doc-catalog.md`** — every document mapped to its published standard, with the
   required section order. Consult before writing each file.
-- **`assets/templates/`** — starting skeletons: `README.md`, `CLAUDE.md`, `CHANGELOG.md`,
+- **`assets/templates/`** — 21 starting skeletons, including `claude/` (`CLAUDE.local.md`,
+  `MEMORY.md`, `SKILL.md`, `rules-topic.md`) and `github/` (PR, issue and Copilot
+  instructions). Older list: `README.md`, `CLAUDE.md`, `CHANGELOG.md`,
   `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `ARCHITECTURE.md`, `TESTING.md`,
   `adr-0001.md`, and `github/` for the issue and pull request templates.
 - **`${CLAUDE_PLUGIN_ROOT}/config/required-docs.json`** — the required set. Shared with the gate.

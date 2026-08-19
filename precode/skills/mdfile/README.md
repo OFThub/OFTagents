@@ -72,9 +72,39 @@ on iki dosya dayatması katlanılmaz olurdu.
 | 🟥 **Çekirdek** | `README.md` · `CLAUDE.md` · `CHANGELOG.md` | her zaman |
 | 🟨 **Açık kaynak** | `CONTRIBUTING` · `SECURITY` · `CODE_OF_CONDUCT` · `LICENSE` · `.github/*` | public remote |
 | 🟦 **Karmaşık** | `ARCHITECTURE.md` · `docs/adr/*` · `TESTING.md` | çok servisli / çok paketli |
+| 🟪 **Topluluk** | `SUPPORT.md` · `GOVERNANCE.md` | sorular tracker dışına taşınca · birden fazla merge yetkisi olunca |
+| 🟨 **Ajan araçları** | `CLAUDE.local.md` · `MEMORY.md` · `.claude/rules/*.md` · `SKILL.md` · `AGENTS.md` · `copilot-instructions.md` | yalnızca istek üzerine |
 
 Zorunlu liste burada değil, `${CLAUDE_PLUGIN_ROOT}/config/required-docs.json` içinde — kapı da
 aynı dosyayı okur.
+
+> **Ajan araçları katmanı kendiliğinden üretilmez.** `AGENTS.md` ve `copilot-instructions.md`
+> her biri `CLAUDE.md`'nin ikinci kopyası olur ve zamanla ondan sapar — okuyan hangisinin
+> bayat olduğunu anlayamaz. `CLAUDE.local.md` ise gitignore'a girmezse bir kişinin yerel
+> yollarını tüm takıma dayatır; tam da önlemek için var olduğu şeyi yapar.
+
+## Hedefli mod
+
+Tek bir dosyayı oluşturmak ya da geliştirmek için:
+
+```
+/precode:mdfile --CODE_OF_CONDUCT     # tek dosya
+/precode:mdfile --security            # küçük harf, kısaltma, .md eki — hepsi olur
+/precode:mdfile --RULES testing       # dosya adı sabit değilse ikinci argüman
+```
+
+| Dosyanın durumu | Ne olur |
+| --- | --- |
+| **Yok** | Proje profillenir, şablondan üretilir |
+| **Var** | **Geliştirilir, üzerine yazılmaz** — eksik bölümler eklenir, artık doğru olmayan iddialar düzeltilir, hâlâ doğru olan cümleler olduğu gibi bırakılır |
+
+Var olan bir dosyayı iyileştirirken doğru cümleyi kendi üslubuna çevirmek geliştirme değil
+gürültüdür: gerçek değişikliği diff içinde görünmez kılar.
+
+Ad çözümlemesi `references/doc-catalog.md` içindeki **tek** tabloda. Büyük/küçük harf, `-`,
+`_` ve sondaki `.md` yok sayılır; `--CODE_OF_CONDUCT`, `--code-of-conduct` ve `--coc` aynı
+satıra düşer. Tanınmayan bir ad sessizce geçilmez — verilen ad söylenir, en yakın satırlar
+listelenir ve durulur. Hiçbir standardın arkasında olmadığı bir doküman türü uydurulmaz.
 
 ## Hangi standart, hangi dosya
 
@@ -100,7 +130,10 @@ skills/mdfile/
 ├── README.md                    ← bu dosya, insan için
 ├── references/
 │   └── doc-catalog.md           ← standart eşlemesi, yalnızca gerektiğinde yüklenir
-└── assets/templates/            ← iskeletler, bağlama yüklenmez, çıktıda kullanılır
+└── assets/templates/            ← 21 iskelet, bağlama yüklenmez, çıktıda kullanılır
+    ├── *.md                     ← kök dosyaları (README, SECURITY, LICENSE, …)
+    ├── claude/                  ← Claude Code native: CLAUDE.local, MEMORY, SKILL, rules
+    └── github/                  ← PR · ISSUE_TEMPLATE · copilot-instructions
     ├── README.md  CLAUDE.md  CHANGELOG.md
     ├── CONTRIBUTING.md  SECURITY.md  CODE_OF_CONDUCT.md
     ├── ARCHITECTURE.md  TESTING.md  adr-0001.md
