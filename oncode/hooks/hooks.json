@@ -1,0 +1,16 @@
+{
+  "description": "oncode — while the ideal-prompt switch is open, routes each submitted prompt through the token-trajectory optimizer.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/prompt-mode.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

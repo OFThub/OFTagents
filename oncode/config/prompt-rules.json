@@ -1,0 +1,16 @@
+{
+  "modes": ["review", "advise", "auto"],
+  "defaultMode": "review",
+  "promptLanguage": "en",
+  "defaultCodeLanguage": "auto",
+  "languagePattern": "^(auto|[a-z]{2}(-[A-Za-z]{2,8})?)$",
+  "bypassPrefixes": ["/", "!"],
+  "bypassExact": [
+    "evet", "hayır", "hayir", "yes", "no", "ok", "tamam", "devam", "continue",
+    "dur", "stop", "y", "n", "1", "2", "3", "4"
+  ],
+  "structureThresholdChars": 280,
+  "contextWarnBytes": 2000000,
+  "stateDir": ".claude/oncode",
+  "injectionBudgetChars": 400
+}

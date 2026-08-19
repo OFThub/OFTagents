@@ -1,0 +1,17 @@
+{
+  "name": "oncode",
+  "version": "0.1.0",
+  "description": "Skills that run while code is being written. Ships ideal-prompt, which rewrites the submitted prompt into the form Claude Code executes with the fewest tokens.",
+  "author": {
+    "name": "OFT",
+    "email": "oturkdogdu1@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": [
+    "prompt",
+    "tokens",
+    "cost",
+    "context",
+    "optimization"
+  ]
+}

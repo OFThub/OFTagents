@@ -22,6 +22,22 @@
         "changelog",
         "scaffolding"
       ]
+    },
+    {
+      "name": "oncode",
+      "description": "Rewrites the submitted prompt into the form Claude Code executes with the fewest tokens - anchored to real paths, bounded in scope, verifiable, and output-capped.",
+      "source": "./oncode",
+      "category": "productivity",
+      "author": {
+        "name": "OFT"
+      },
+      "keywords": [
+        "prompt",
+        "tokens",
+        "cost",
+        "context",
+        "optimization"
+      ]
     }
   ]
 }

@@ -29,6 +29,12 @@ yok; `docs-gate.mjs` yalnızca Node yerleşiklerini kullanır.
 | `precode/hooks/hooks.json` | `SessionStart` + `PreToolUse: Write\|Edit` kaydı. |
 | `precode/commands/docs.md` | `/precode:docs` |
 | `precode/skills/mdfile/` | `SKILL.md` + `references/` + `assets/templates/` |
+| `oncode/.claude-plugin/plugin.json` | İkinci plugin manifest'i. |
+| `oncode/config/prompt-rules.json` | Modlar, baypaslar, eşikler — hook ve skill'in ortak kaynağı. |
+| `oncode/scripts/prompt-mode.mjs` | Saf `shouldOptimize()` + `contextPressure()` + ince CLI kabuğu. |
+| `oncode/scripts/prompt-mode.test.mjs` | `node:test`, framework yok, disk yok. |
+| `oncode/hooks/hooks.json` | `UserPromptSubmit` kaydı (matcher almaz). |
+| `oncode/skills/ideal-prompt/` | `SKILL.md` + `references/` |
 
 ## Conventions
 

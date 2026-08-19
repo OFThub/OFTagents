@@ -29,6 +29,8 @@ ve onları besleyen skill'ler.
 </td>
 <td width="25%" align="center">
   <a href="precode/"><strong>precode</strong><br/><sub>dokümantasyon kapısı</sub></a>
+  &nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="oncode/"><strong>oncode</strong><br/><sub>prompt token optimizasyonu</sub></a>
 </td>
 <td width="25%" align="center">
   <a href="#-yeni-plugin-ekleme"><strong>Genişletme</strong><br/><sub>kod yazmadan plugin ekle</sub></a>
@@ -118,6 +120,7 @@ aynıdır.
 | Plugin | Ne yapar | Sürüm | Bileşenler |
 | --- | --- | --- | --- |
 | **[precode](precode/)** | Oturum başında bir kez sorar; cevapsız kalırsa ilk kod yazımını engeller ve sektör standardı `.md` setini ürettirir | `0.1.0` | 2 hook · 1 skill · 1 komut |
+| **[oncode](oncode/)** | Açıkken her prompt'u, Claude Code'un en az token harcayarak doğru sonuca ulaşacağı biçime çevirir | `0.1.0` | 1 hook · 1 skill |
 
 ## 🧩 Yeni plugin ekleme
 

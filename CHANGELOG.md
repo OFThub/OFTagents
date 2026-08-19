@@ -23,6 +23,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared `config/required-docs.json` so the gate and the skill can never disagree about
   which documents are required.
 - Document templates for the core, open-source and complex tiers.
+- `oncode` plugin 0.1.0 — `UserPromptSubmit` hook plus the `ideal-prompt` skill, which
+  rewrites a submitted prompt into the form Claude Code executes with the fewest tokens.
+  The prompt's own length is not the target: the trajectory it causes is. Rules are grouped
+  by the surface they cut — trajectory (15k-120k), structure (2k-20k), and output (5k-40k at
+  ~5x the input price).
+- A persistent switch for `ideal-prompt`: `--open` routes every later prompt through the
+  skill, `--close` stops it until reopened. Three output modes — `--review`, `--advise`,
+  `--auto` — and `--language` for the language of generated code artifacts. State lives in
+  the user's Claude home, never in the project.
+- Context-pressure measurement: the hook stats the transcript file and suggests `/compact`
+  or `/clear` past a threshold. It never runs either — a hook cannot execute a slash command,
+  and compaction is destructive.
+- Shared `oncode/config/prompt-rules.json` so the hook and the skill can never disagree
+  about modes, bypasses or thresholds.
 - Nine further templates: `SUPPORT.md`, `GOVERNANCE.md`, `LICENSE.md`, `AGENTS.md`,
   `.github/copilot-instructions.md`, and the Claude Code native set — `CLAUDE.local.md`,
   `MEMORY.md`, `SKILL.md` and `.claude/rules/<topic>.md`. 21 templates in total.
