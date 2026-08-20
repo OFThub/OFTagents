@@ -11,6 +11,8 @@ her plugin kökteki kendi klasöründe yaşar ve göreli `source` ile kataloğa 
 | Task | Command |
 | --- | --- |
 | Test (gate logic) | `node precode/scripts/docs-gate.test.mjs` |
+| Test (prompt mode) | `node oncode/scripts/prompt-mode.test.mjs` |
+| Benchmark (para harcar) | `node oncode/bench/bench.mjs --dry-run` once |
 | Install locally | `/plugin marketplace add C:\Projects\OFTagents` |
 
 Build adımı yok — plugin'ler yorumlanan dosyalardan oluşur. Bağımlılık yok, `package.json`
@@ -35,6 +37,7 @@ yok; `docs-gate.mjs` yalnızca Node yerleşiklerini kullanır.
 | `oncode/scripts/prompt-mode.test.mjs` | `node:test`, framework yok, disk yok. |
 | `oncode/hooks/hooks.json` | `UserPromptSubmit` kaydı (matcher almaz). |
 | `oncode/skills/ideal-prompt/` | `SKILL.md` + `references/` |
+| `oncode/bench/` | Olcum harness'i, vakalar, fixture. Hook'lari kapatarak calisir. |
 
 ## Conventions
 
@@ -62,3 +65,13 @@ yok; `docs-gate.mjs` yalnızca Node yerleşiklerini kullanır.
   ikinci bir liste yaratmak kapıyı tatmin edilemez hale getirir.
 - Hook değişiklikleri yalnızca Claude Code yeniden başlatılınca yüklenir; test etmeden
   önce oturumu yeniden başlatın.
+- Benchmark (`oncode/bench/bench.mjs`) **hook'lar kapalı** çalışmak zorundadır
+  (`--settings '{"disableAllHooks":true}'`). Açık bırakılırsa bu deponun kendi plugin'leri
+  ölçümü geçersiz kılar: `precode` kapısı fixture'daki her `Edit`'i reddeder (fixture'da
+  `CLAUDE.md` yoktur) ve `oncode`'un `UserPromptSubmit` hook'u **ham kola da** "ideal-prompt
+  uygula" talimatını enjekte eder. İki koşu bu yüzden çöpe gitti ve tablo ideal kolu daha
+  pahalı gösterdi — ölçülen şey görevin maliyeti değil, kapıyla boğuşmanın maliyetiydi.
+- Benchmark çıktısındaki `permission_denials` uyarısı **görmezden gelinmemeli**. Reddedilmiş
+  bir araç varsa o satır görevin maliyetini değil, engelin maliyetini ölçüyordur.
+- README'deki hiçbir sayı ölçümle çelişmemeli. `oncode/README.md` bir kez "10–50× kazanç"
+  iddia etti; benchmark bunu desteklemedi ve iddia ölçülen değerle değiştirildi.

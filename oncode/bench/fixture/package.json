@@ -1,0 +1,9 @@
+{
+  "name": "bench-fixture",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Throwaway fixture for the oncode prompt benchmark.",
+  "scripts": {
+    "test": "node --test test/auth.test.js"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "model": "sonnet",
+  "maxTurns": 30,
+  "allowedTools": "Read,Edit,Write,Glob,Grep,Bash(node:*)",
+  "cases": [
+    {
+      "id": "bugfix",
+      "note": "The planted bug: refreshToken returns null once the token has expired.",
+      "verify": "node --test test/auth.test.js",
+      "raw": "fix the login bug",
+      "ideal": "src/auth/token.js: refreshToken() returns null when the token has already expired, so a session can never be revived after the TTL. Issue a fresh token instead. Verify with: node --test test/auth.test.js. Touch only src/auth/. Report the diff and the test result, nothing else."
+    },
+    {
+      "id": "explain",
+      "note": "Exploration. The raw arm has no anchor and no output bound.",
+      "raw": "explain how this project works",
+      "ideal": "Starting from src/auth/session.js, summarise the auth flow in at most 6 bullets. Name the file for each bullet. No preamble, no closing summary."
+    },
+    {
+      "id": "review",
+      "note": "Review. The raw arm invites an unbounded sweep of the whole tree.",
+      "raw": "review the code and tell me everything that is wrong with it",
+      "ideal": "Review src/auth/ for correctness bugs only. Report findings most severe first, each with file:line. Skip style preferences. No preamble, no closing summary."
+    }
+  ]
+}

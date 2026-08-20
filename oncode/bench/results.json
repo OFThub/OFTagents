@@ -1,0 +1,105 @@
+{
+  "model": "sonnet",
+  "generatedAt": "2026-08-20T06:20:24.436Z",
+  "maxTurns": 30,
+  "runs": [
+    {
+      "caseId": "bugfix",
+      "arm": "raw",
+      "promptChars": 17,
+      "inputTokens": 400620,
+      "freshInputTokens": 40991,
+      "outputTokens": 2221,
+      "numTurns": 10,
+      "costUsd": 0.38805969999999995,
+      "terminalReason": "completed",
+      "permissionDenials": [],
+      "resultText": "All 4 tests pass. The fix: `refreshToken` in `src/auth/token.js` was refusing to issue a new token when the passed-in token was already expired — but `session.js`'s `resume()` only calls `refreshToken` *after* confirming expiry, so refresh always returned `null` and idle sessions could never be revived. Removed the inverted guard so `refreshToken` unconditionally issues a fresh token.",
+      "wallMs": 30228,
+      "verify": {
+        "ok": true,
+        "why": "ℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 75.6048"
+      }
+    },
+    {
+      "caseId": "bugfix",
+      "arm": "ideal",
+      "promptChars": 277,
+      "inputTokens": 325038,
+      "freshInputTokens": 37477,
+      "outputTokens": 812,
+      "numTurns": 5,
+      "costUsd": 0.3243243,
+      "terminalReason": "completed",
+      "permissionDenials": [],
+      "resultText": "Diff (`src/auth/token.js`):\n\n```diff\n-// BUG: when the token has already expired this returns null instead of\n-// issuing a fresh one, so a user who idles past the TTL can never refresh.\n export function refreshToken(token, now = Date.now()) {\n-  if (isExpired(token, now)) return null;\n-  return issueToken(token.userId, now);\n+  return issueToken(token.userId, now);\n }\n```\n\nTest result: `node --test test/auth.test.js` — 4 passed, 0 failed.",
+      "wallMs": 15586,
+      "verify": {
+        "ok": true,
+        "why": "ℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 71.9059"
+      }
+    },
+    {
+      "caseId": "explain",
+      "arm": "raw",
+      "promptChars": 30,
+      "inputTokens": 262851,
+      "freshInputTokens": 40099,
+      "outputTokens": 2150,
+      "numTurns": 13,
+      "costUsd": 0.3406126,
+      "terminalReason": "completed",
+      "permissionDenials": [],
+      "resultText": "## What this project is\n\nThis is `bench-fixture` — a tiny throwaway Node.js codebase (per `README.md`) used by `oncode/scripts/bench.mjs` as a realistic-but-small target for a benchmark. It's not a real product; it exists to give both arms of some benchmark comparison the same fixed codebase to explore/debug, including \"unrelated\" modules that add exploration cost and one intentionally planted bug.\n\n## Structure\n\n```\nsrc/\n  auth/\n    token.js     — token issuing/expiry/refresh\n    session.js   — in-memory session store (login/resume/logout)\n  api/\n    users.js     — GET/PATCH user endpoints\n  ",
+      "wallMs": 25424,
+      "verify": null
+    },
+    {
+      "caseId": "explain",
+      "arm": "ideal",
+      "promptChars": 144,
+      "inputTokens": 259011,
+      "freshInputTokens": 37007,
+      "outputTokens": 686,
+      "numTurns": 4,
+      "costUsd": 0.29991519999999994,
+      "terminalReason": "completed",
+      "permissionDenials": [],
+      "resultText": "- `login` (src/auth/session.js:5-9) issues a token via `issueToken` (src/auth/token.js:3-5) and stores it in the in-memory `sessions` map keyed by `userId`.\n- `issueToken` (src/auth/token.js:3-5) creates `{ userId, issuedAt, expiresAt }` with a 15-minute TTL (`TOKEN_TTL_MS`, src/auth/token.js:1).\n- `resume` (src/auth/session.js:11-18) looks up the stored token; if none exists, returns `null`.\n- `resume` (src/auth/session.js:14) returns the existing token unchanged if `isExpired` (src/auth/token.js:7-9) says it hasn't passed `expiresAt`.\n- If expired, `resume` (src/auth/session.js:15-16) calls ",
+      "wallMs": 13458,
+      "verify": null
+    },
+    {
+      "caseId": "review",
+      "arm": "raw",
+      "promptChars": 60,
+      "inputTokens": 263347,
+      "freshInputTokens": 71791,
+      "outputTokens": 6357,
+      "numTurns": 13,
+      "costUsd": 0.5844978000000001,
+      "terminalReason": "completed",
+      "permissionDenials": [],
+      "resultText": "Reviewed the full fixture (`src/api`, `src/auth`, `src/db`, `src/utils`, `test/`). Here's everything wrong, worst first.\n\n**1. Critical — `refreshToken` can never actually refresh an expired token** (`src/auth/token.js:13-16`)\n```js\nexport function refreshToken(token, now = Date.now()) {\n  if (isExpired(token, now)) return null;   // backwards\n  return issueToken(token.userId, now);\n}\n```\nThe condition is inverted: it only issues a new token when the old one is *still valid*, and bails with `null` for the one case it exists to handle — an expired token. In `session.js:14-17`, `resume()` only c",
+      "wallMs": 72784,
+      "verify": null
+    },
+    {
+      "caseId": "review",
+      "arm": "ideal",
+      "promptChars": 156,
+      "inputTokens": 259144,
+      "freshInputTokens": 37225,
+      "outputTokens": 2355,
+      "numTurns": 5,
+      "costUsd": 0.3262297,
+      "terminalReason": "completed",
+      "permissionDenials": [
+        "Bash"
+      ],
+      "resultText": "**src/auth/token.js:13-15** — `refreshToken` returns `null` when the token is already expired instead of issuing a new one (`if (isExpired(...)) return null`). This inverts the intended behavior: a token can only be \"refreshed\" while still valid, and once it expires it can never be refreshed again.\n\n**src/auth/session.js:14-17** — `resume` cascades the above bug: it only calls `refreshToken` after confirming `isExpired(token, now)` is true, so `refreshToken` always re-checks expiration, always hits the `null` branch, and `resume` always returns `null` for any idle session past TTL. Every user ",
+      "wallMs": 30671,
+      "verify": null
+    }
+  ]
+}

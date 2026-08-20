@@ -37,6 +37,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and compaction is destructive.
 - Shared `oncode/config/prompt-rules.json` so the hook and the skill can never disagree
   about modes, bypasses or thresholds.
+- `oncode/bench/` - a measurement harness that runs a raw prompt and its ideal-prompt
+  rewrite through `claude -p --output-format json` and reads the real `usage` numbers back,
+  against a fixture with a planted bug and an objective pass/fail check. Measured on Sonnet 5:
+  output tokens -64%, turns 36 -> 14, cost -28% across three cases, with both bugfix arms
+  verified as actually fixing the bug.
+- The benchmark runs with hooks and MCP disabled. With them live, this repository's own
+  plugins invalidated the measurement: the `precode` gate denied every `Edit` in the fixture,
+  and `oncode`'s own `UserPromptSubmit` hook injected its instruction into the raw arm too.
+  `permission_denials` is now recorded per run and surfaced as a warning.
 - Nine further templates: `SUPPORT.md`, `GOVERNANCE.md`, `LICENSE.md`, `AGENTS.md`,
   `.github/copilot-instructions.md`, and the Claude Code native set — `CLAUDE.local.md`,
   `MEMORY.md`, `SKILL.md` and `.claude/rules/<topic>.md`. 21 templates in total.
