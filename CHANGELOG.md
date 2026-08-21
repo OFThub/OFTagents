@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-20
+
+### Fixed
+
+- `--review`, `--advise` and `--auto` were documented in `ideal-prompt/SKILL.md` and the
+  README but were never handled by `runFlags`, so all three answered "unknown flag". The
+  flag surface is now derived from `config.modes` instead of being kept by hand in two
+  places, and a test calls every advertised flag to prove none falls through.
+- `oncode` had no `commands/` directory, so the documented escape hatch
+  `/oncode:ideal-prompt --close` relied entirely on the skill name resolving as a slash
+  command. Both switches now ship a thin command that forwards to the script.
+
+### Changed
+
+- `ideal-prompt` is loaded lazily. The hook injection carries the three triage checks
+  (`triageDirective`) instead of ordering a skill load, so a prompt that is already
+  anchored, bounded and verifiable never opens the ~2400-token `SKILL.md`. The injection
+  grows ~19 tokens per prompt in exchange; break-even is around 125 optimised prompts in a
+  session, and a prompt that fails triage pays both. An expected gain, not a guaranteed one.
+- `mdfile`'s targeted mode moved to `references/targeted-mode.md`. It is dead weight on
+  every ordinary invocation, and `SKILL.md` shrank from 10,331 to 8,759 characters.
+- The combined `UserPromptSubmit` injection budget moved 560 -> 640 characters to fit the
+  triage line; the measured worst case is 619.
+- `precode`'s `SessionStart` injection gained a ceiling (`CONTEXT_BUDGET_CHARS`, 1000) and a
+  test. It fires once per conversation, so this guards against growth rather than saving
+  tokens today.
+- Both plugins are 0.2.0. They were both 0.1.0 while shipping materially different content
+  from the 0.1.0 already in the plugin cache, which made the version number meaningless.
+
+### Added
+
+- `runFlags` takes an injectable writer, so the whole flag surface is testable without
+  touching the disk - the same dependency-injection rule the rest of the module follows.
+
+## [0.1.0] - 2026-08-19
+
 ### Added
 
 - `oftagents` marketplace catalog with relative plugin sources.
@@ -28,6 +64,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The prompt's own length is not the target: the trajectory it causes is. Rules are grouped
   by the surface they cut — trajectory (15k-120k), structure (2k-20k), and output (5k-40k at
   ~5x the input price).
+- `lean-reply` skill — the output-side counterpart, on the surface that costs ~5x the input
+  rate and is resent on every later turn. Answer first, no preamble, cite `path:line` instead
+  of pasting code already written to a file. It never overrides an explicit request or an
+  active output style, and it carries a completeness floor: failures, assumptions, risks and
+  skipped scope are never dropped to save words.
+- Second, independent switch in the shared state file (`replyOpen`), shipped open. The two
+  switches run through one `UserPromptSubmit` hook and one Node process rather than two.
+- `replyDirective` in `config/prompt-rules.json` — the operative rule travels inside the
+  hook injection instead of pointing at the skill file, because loading ~1.5k tokens of
+  `SKILL.md` on every prompt would cost more than the skill saves.
 - A persistent switch for `ideal-prompt`: `--open` routes every later prompt through the
   skill, `--close` stops it until reopened. Three output modes — `--review`, `--advise`,
   `--auto` — and `--language` for the language of generated code artifacts. State lives in
@@ -37,6 +83,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and compaction is destructive.
 - Shared `oncode/config/prompt-rules.json` so the hook and the skill can never disagree
   about modes, bypasses or thresholds.
+- `ideal-prompt` now ships **open**: after install, every non-bypassed prompt is routed
+  through the skill. `/oncode:ideal-prompt --close` opts out and the choice persists across
+  sessions. The shipped default is `defaultOpen` in the config, not a constant in the code.
+- A missing or corrupt state file now falls back to that configured default instead of being
+  treated as closed. Only an explicit boolean counts as a decision, so `--close` survives while
+  a truncated file no longer silently disables the feature. The process-level fail-safe is
+  unchanged: if the script throws, the hook exits 0 and the prompt passes untouched.
 - `oncode/bench/` - a measurement harness that runs a raw prompt and its ideal-prompt
   rewrite through `claude -p --output-format json` and reads the real `usage` numbers back,
   against a fixture with a planted bug and an objective pass/fail check. Measured on Sonnet 5:

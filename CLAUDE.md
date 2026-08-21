@@ -3,8 +3,9 @@
 Claude Code plugin marketplace. Kök `.claude-plugin/marketplace.json` bir katalogdur;
 her plugin kökteki kendi klasöründe yaşar ve göreli `source` ile kataloğa bağlanır.
 
-Şu an tek plugin var: `precode` — dokümansız projeye ilk kod yazımını engelleyen bir
-`PreToolUse` hook'u ve dokümanları üreten `mdfile` skill'i.
+İki plugin var: `precode` — dokümansız projeye ilk kod yazımını engelleyen bir
+`PreToolUse` hook'u ve dokümanları üreten `mdfile` skill'i — ve `oncode`, token
+faturasının iki ucunu tutan iki anahtar: `ideal-prompt` (girdi) ve `lean-reply` (çıktı).
 
 ## Commands
 
@@ -30,13 +31,15 @@ yok; `docs-gate.mjs` yalnızca Node yerleşiklerini kullanır.
 | `precode/scripts/docs-gate.test.mjs` | `node:test`, framework yok, disk yok. |
 | `precode/hooks/hooks.json` | `SessionStart` + `PreToolUse: Write\|Edit` kaydı. |
 | `precode/commands/docs.md` | `/precode:docs` |
-| `precode/skills/mdfile/` | `SKILL.md` + `references/` + `assets/templates/` |
+| `precode/skills/mdfile/` | `SKILL.md` + `references/` (`doc-catalog.md`, `targeted-mode.md`) + `assets/templates/` |
 | `oncode/.claude-plugin/plugin.json` | İkinci plugin manifest'i. |
-| `oncode/config/prompt-rules.json` | Modlar, baypaslar, eşikler — hook ve skill'in ortak kaynağı. |
-| `oncode/scripts/prompt-mode.mjs` | Saf `shouldOptimize()` + `contextPressure()` + ince CLI kabuğu. |
+| `oncode/config/prompt-rules.json` | Modlar, baypaslar, eşikler, `replyDirective` — hook ve iki skill'in ortak kaynağı. |
+| `oncode/scripts/prompt-mode.mjs` | Saf `shouldOptimize()` + `shouldShapeReply()` + `contextPressure()` + ince CLI kabuğu. |
 | `oncode/scripts/prompt-mode.test.mjs` | `node:test`, framework yok, disk yok. |
-| `oncode/hooks/hooks.json` | `UserPromptSubmit` kaydı (matcher almaz). |
-| `oncode/skills/ideal-prompt/` | `SKILL.md` + `references/` |
+| `oncode/hooks/hooks.json` | Tek `UserPromptSubmit` kaydı (matcher almaz) — iki anahtar, tek Node süreci. |
+| `oncode/commands/` | `/oncode:ideal-prompt`, `/oncode:lean-reply` — bayrağı script'e iletir. |
+| `oncode/skills/ideal-prompt/` | `SKILL.md` + `references/` — girdi yüzeyi. |
+| `oncode/skills/lean-reply/` | `SKILL.md` — çıktı yüzeyi. Kural enjeksiyonda taşınır, dosya prompt başına okunmaz. |
 | `oncode/bench/` | Olcum harness'i, vakalar, fixture. Hook'lari kapatarak calisir. |
 
 ## Conventions
@@ -63,6 +66,19 @@ yok; `docs-gate.mjs` yalnızca Node yerleşiklerini kullanır.
   çağırır — ikinci bir kopya zamanla sapar ve sapmış bir kapı tatmin edilemez hale gelir.
 - Zorunlu doküman listesi `docs-gate.mjs` içine gömülmemeli. Konfigürasyondan okunur;
   ikinci bir liste yaratmak kapıyı tatmin edilemez hale getirir.
+- Bayrak listesi **elle yazılmaz**: `flagList(config)` config'ten türer ve `runFlags` ondan
+  dağıtım yapar. `--review`/`--advise`/`--auto` bir kez belgelerde vaat edilip kodda hiç
+  var olmadı; ikinci bir elle tutulan liste tam olarak böyle sapar. Test her bayrağı çağırır.
+- Enjeksiyon `ideal-prompt` skill'ini **yüklet me meli** — üç triyaj sorusunu
+  `triageDirective` ile kendisi taşır. "Skill'i uygula"ya geri dönülürse zaten ideal olan
+  her prompt ~2.400 token öder ve tembel yüklemenin tamamı geri alınır.
+- Birleşik enjeksiyon — iki anahtar açık **ve** bağlam uyarısı varken — `injectionBudgetChars`
+  sınırını aşmamalı. Şu an tavan 640, en kötü durum 619. Aşıldığı an "token kazanmak için
+  token yakma" regresyonu başlar; `prompt-mode.test.mjs` bunu birleşik en-kötü-durum
+  testiyle korur.
+- `replyDirective` **kendi kendine yetmeli**. "lean-reply skill'ini yükle" biçimine
+  dönüştürülürse Claude her prompt'ta ~1.5k token'lık `SKILL.md`'yi okur ve skill kendi
+  kazancını tersine çevirir. Test metnin "do not load the skill" ifadesini içermesini şart koşar.
 - Hook değişiklikleri yalnızca Claude Code yeniden başlatılınca yüklenir; test etmeden
   önce oturumu yeniden başlatın.
 - Benchmark (`oncode/bench/bench.mjs`) **hook'lar kapalı** çalışmak zorundadır

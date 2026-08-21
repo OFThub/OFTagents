@@ -25,7 +25,7 @@
     },
     {
       "name": "oncode",
-      "description": "Rewrites the submitted prompt into the form Claude Code executes with the fewest tokens - anchored to real paths, bounded in scope, verifiable, and output-capped.",
+      "description": "Two switches on the token bill: ideal-prompt rewrites the submitted prompt into the cheapest correct trajectory, lean-reply answers in the fewest words that still let the user act.",
       "source": "./oncode",
       "category": "productivity",
       "author": {
@@ -36,7 +36,9 @@
         "tokens",
         "cost",
         "context",
-        "optimization"
+        "optimization",
+        "output",
+        "verbosity"
       ]
     }
   ]

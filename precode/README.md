@@ -9,10 +9,10 @@ Dokümansız bir projede oturum açtığınızda **bir kez** sorar: kuralım mı
 
 <br/>
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](.claude-plugin/plugin.json)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](.claude-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](../LICENSE)
 ![Hook](https://img.shields.io/badge/hook-PreToolUse-D97757)
-![Tests](https://img.shields.io/badge/tests-18%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-20%20passing-brightgreen)
 ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
 ![Ask](https://img.shields.io/badge/soru-oturumda%201%20kez-brightgreen)
 ![Writes](https://img.shields.io/badge/projeye%20yazma-yok-brightgreen)

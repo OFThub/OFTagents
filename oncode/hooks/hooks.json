@@ -1,5 +1,5 @@
 {
-  "description": "oncode — while the ideal-prompt switch is open, routes each submitted prompt through the token-trajectory optimizer.",
+  "description": "oncode — one UserPromptSubmit entry point for two independent switches: ideal-prompt routes the submitted prompt through the token-trajectory optimizer, lean-reply shapes the answer written back to the user.",
   "hooks": {
     "UserPromptSubmit": [
       {

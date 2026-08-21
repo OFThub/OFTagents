@@ -1,7 +1,7 @@
 ---
 name: mdfile
 description: This skill should be used when the user asks to "create documentation", "set up a README", "generate a CHANGELOG", "add CONTRIBUTING", "write project docs", "this project has no docs", when the precode gate denies a write with a missing-documentation reason, or when the user agrees to the documentation offer made at session start. Detects which industry-standard markdown documents a project is missing, infers what it can from the project itself, asks only for what cannot be inferred, and generates each file against its published standard.
-version: 0.1.0
+version: 0.2.0
 ---
 
 # mdfile — project documentation baseline
@@ -36,39 +36,10 @@ would have meant nothing.
 
 ## Targeted mode — `--<DOCUMENT>`
 
-When the invocation carries an argument like `--CODE_OF_CONDUCT`, `--security` or
-`--RULES testing`, work on **that document only**. Skip the tier discussion entirely: the
-user has already said which file they mean.
-
-Resolve the name through the *Targeted mode — name resolution* table in
-`references/doc-catalog.md`. Matching is case-insensitive and ignores `-`, `_` and a
-trailing `.md`. An unknown name is not a silent failure — say what was given, list the
-closest rows, and stop.
-
-Then branch on whether the file already exists:
-
-| State | What to do |
-|---|---|
-| **Missing** | Profile (step 2), then generate it from its template. Ask only what the profile could not answer. |
-| **Exists** | **Improve it — never overwrite it.** |
-
-### Improving a document that already exists
-
-1. Read the file in full. It is someone's work, and most of it is probably right.
-2. Read that document's entry in `references/doc-catalog.md` and compare: which required
-   sections are absent, which are stubs, which claims are now false.
-3. Re-profile the project (step 2). Documentation rots because the project moved, so check
-   the commands, paths and versions the file names against what is actually there today.
-4. Report what you propose — sections to add, claims that no longer hold, placeholders
-   still unfilled — and what you are leaving alone, then apply it.
-5. Preserve the author's wording wherever it is still true. Rewriting a correct sentence
-   into your own phrasing is churn, not improvement, and it buries the real change in the diff.
-
-Never replace a file wholesale in this mode. If the existing document is so far from the
-standard that editing is harder than starting over, say so and ask — do not decide it alone.
-
-Four names need a second argument, because the filename is not fixed: `--SKILL <name>`,
-`--RULES <topic>`, `--ADR <title>`, `--LICENSE <spdx-id>`. Ask if it was not supplied.
+If `$ARGUMENTS` carries a document name (`--CODE_OF_CONDUCT`, `--security`, `--RULES testing`),
+read `references/targeted-mode.md` and follow it instead of the tier workflow below. It holds
+the name resolution rules, the four names that need a second argument, and the
+**improve-never-overwrite** procedure for a document that already exists.
 
 ## Workflow
 
@@ -174,9 +145,12 @@ A generated document must be **true about this project**, not true in general.
 
 - **`references/doc-catalog.md`** — every document mapped to its published standard, with the
   required section order. Consult before writing each file.
-- **`assets/templates/`** — 21 starting skeletons, including `claude/` (`CLAUDE.local.md`,
-  `MEMORY.md`, `SKILL.md`, `rules-topic.md`) and `github/` (PR, issue and Copilot
-  instructions). Older list: `README.md`, `CLAUDE.md`, `CHANGELOG.md`,
-  `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `ARCHITECTURE.md`, `TESTING.md`,
-  `adr-0001.md`, and `github/` for the issue and pull request templates.
+- **`references/targeted-mode.md`** — the `--<DOCUMENT>` path: name resolution, and how to
+  improve a document that already exists without overwriting it.
+- **`assets/templates/`** — 21 starting skeletons: the root documents (`README.md`,
+  `CLAUDE.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`,
+  `ARCHITECTURE.md`, `TESTING.md`, `SUPPORT.md`, `GOVERNANCE.md`, `AGENTS.md`,
+  `LICENSE.md`, `adr-0001.md`), plus `claude/` (`CLAUDE.local.md`, `MEMORY.md`,
+  `SKILL.md`, `rules-topic.md`) and `github/` (PR, two issue templates, Copilot
+  instructions).
 - **`${CLAUDE_PLUGIN_ROOT}/config/required-docs.json`** — the required set. Shared with the gate.

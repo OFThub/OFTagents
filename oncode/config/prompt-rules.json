@@ -1,5 +1,6 @@
 {
   "modes": ["review", "advise", "auto"],
+  "defaultOpen": true,
   "defaultMode": "review",
   "promptLanguage": "en",
   "defaultCodeLanguage": "auto",
@@ -12,5 +13,8 @@
   "structureThresholdChars": 280,
   "contextWarnBytes": 2000000,
   "stateDir": ".claude/oncode",
-  "injectionBudgetChars": 400
+  "triageDirective": "Triage: names a path, bounds the scope, gives a pass/fail check? All three -> run as written, skip the skill. Else load ideal-prompt and rewrite.",
+  "replyDefaultOpen": true,
+  "replyDirective": "lean-reply OPEN: answer in the first 1-3 lines, then only what changes the user's next move. No preamble or recap, cite path:line instead of pasting code already written, never drop failures, assumptions or risks. Rules complete here; do not load the skill file.",
+  "injectionBudgetChars": 640
 }

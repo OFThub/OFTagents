@@ -4,18 +4,23 @@
 
 ### Kod yazarken çalışan skill'ler
 
-İlk skill: **ideal-prompt** — attığınız prompt'u, Claude Code'un **en az token harcayarak**
-doğru sonuca ulaşacağı biçime çevirir. Daha kısa değil; **daha sınırlı**.
+Token faturasının iki ucunda iki anahtar:
+
+**ideal-prompt** — attığınız prompt'u, Claude Code'un **en az token harcayarak** doğru
+sonuca ulaşacağı biçime çevirir. Daha kısa değil; **daha sınırlı**.
+
+**lean-reply** — size yazılan cevabı yoğunlaştırır. Daha kısa değil; **daha yoğun** —
+aynı gerçekler, daha az kelime.
 
 <br/>
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](.claude-plugin/plugin.json)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](.claude-plugin/plugin.json)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](../LICENSE)
 ![Hook](https://img.shields.io/badge/hook-UserPromptSubmit-D97757)
-![Tests](https://img.shields.io/badge/tests-25%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-44%20passing-brightgreen)
 ![Benchmark](https://img.shields.io/badge/%C3%B6l%C3%A7%C3%BClen%20%C3%A7%C4%B1kt%C4%B1%20kazanc%C4%B1--64%25-D97757)
 ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
-![Switch](https://img.shields.io/badge/anahtar-kapal%C4%B1%20ba%C5%9Flar-brightgreen)
+![Switch](https://img.shields.io/badge/iki%20anahtar-a%C3%A7%C4%B1k%20gelir-D97757)
 ![Writes](https://img.shields.io/badge/projeye%20yazma-yok-brightgreen)
 
 </div>
@@ -57,7 +62,10 @@ fiilen ölçülen değerler [Kanıt bölümünde](#kanıt--ölçülmüş-tahmin-
 |---|---|---|---|
 | **Yörünge** — ajanın yaptığı okuma, arama, düzeltme | 15k–120k | girdi | **A** |
 | **Yapı** — talimata uyum, yeniden çalışma, cache isabeti | 2k–20k | girdi | **B** |
-| **Çıktı** — modelin ürettiği metin | 5k–40k | **~5× girdi**, üstelik her tur yeniden gönderilir | **C** |
+| **Çıktı** — modelin ürettiği metin | 5k–40k | **~5× girdi**, üstelik her tur yeniden gönderilir | **C** + `lean-reply` |
+
+`ideal-prompt`'un C kuralları yalnızca **o prompt için** geçerlidir. `lean-reply` aynı yüzeyi
+kalıcı bir davranışa çevirir — en pahalı yüzey, tek seferlik değil sürekli savunulur.
 
 ## Akış
 
@@ -65,24 +73,26 @@ fiilen ölçülen değerler [Kanıt bölümünde](#kanıt--ölçülmüş-tahmin-
 sequenceDiagram
     participant K as Kullanıcı
     participant H as UserPromptSubmit hook
-    participant S as ideal-prompt skill
+    participant I as ideal-prompt
+    participant L as lean-reply
 
     K->>H: prompt gönderir
-    alt anahtar kapalı
+    alt iki anahtar da kapalı
         H-->>K: sessiz — hiç müdahale yok (0 token)
-    else "/" veya "!" ile başlıyor
-        H-->>K: baypas — komut olduğu gibi geçer
-    else onay kelimesi (evet, devam, ok…)
-        H-->>K: baypas
+    else "/" , "!" veya onay kelimesi
+        H->>L: yalnızca cevap direktifi (~65 token)
+        Note over L: prompt yeniden yazılmaz,<br/>sadece cevap yoğunlaşır
+        L-->>K: sonuç önce, dolgu yok
     else
-        H->>S: ~90 token enjeksiyon: anahtar açık, mod X
-        S->>S: triyaj → zaten ideal mi?
+        H->>I: anahtar açık, mod X
+        H->>L: cevap direktifi
+        I->>I: triyaj → zaten ideal mi?
         alt zaten ideal
-            S-->>K: "zaten ideal" — tek satır, işe devam
+            I-->>K: "zaten ideal" — tek satır, işe devam
         else
-            S->>S: A/B/C/D kurallarını uygula
-            S-->>K: moda göre göster / onay al / çalıştır
+            I->>I: A/B/C/D kurallarını uygula
         end
+        L-->>K: moda göre göster / onay al / çalıştır<br/>— sonuç önce, dolgu yok
     end
 ```
 
@@ -167,7 +177,11 @@ ama tur sayısı maskelenmiyor.
 
 ## Komutlar
 
-Anahtar **kapalı başlar**. Açana kadar hiçbir prompt'a dokunulmaz.
+**İki anahtar da açık gelir.** Kurulup Claude Code yeniden başlatıldığı andan itibaren,
+baypas edilmeyen her prompt `ideal-prompt`'tan geçer ve size yazılan her cevap
+`lean-reply` biçimini alır. İstemiyorsanız tek komut yeter — ve karar oturumlar arası korunur.
+
+Anahtarlar **bağımsızdır**: birini kapatmak diğerini etkilemez.
 
 | Komut | Ne yapar |
 |---|---|
@@ -179,6 +193,9 @@ Anahtar **kapalı başlar**. Açana kadar hiçbir prompt'a dokunulmaz.
 | `/oncode:ideal-prompt --language tr` | Üretilen **kod içi** yorum/log dilini sabitler |
 | `/oncode:ideal-prompt --status` | Durumu bildirir, değiştirmez |
 | `/oncode:ideal-prompt <metin>` | Tek seferlik optimizasyon, anahtardan bağımsız |
+| `/oncode:lean-reply --open` | Cevaplar yoğunlaştırılır. **Varsayılan bu** |
+| `/oncode:lean-reply --close` | Cevaplar doğal uzunluğuna döner |
+| `/oncode:lean-reply --status` | İki anahtarı da bildirir |
 
 Anahtar `~/.claude/oncode/state.json` içinde yaşar — **projenize hiçbir şey yazılmaz** ve
 ayar oturumlar arası korunur.
@@ -229,7 +246,40 @@ optimizasyon turu (~500–1500 token) ekler.
 > Bu satırlar daha önce "10–50× kazanç" diyordu. Benchmark bunu **desteklemedi** ve iddia
 > ölçülen değerlerle değiştirildi. Kazanç gerçek ama bir büyüklük mertebesi değil: üç vakada
 > toplam maliyet −%28.
-Beğenmediyseniz çıkış tek komut: `/oncode:ideal-prompt --close`
+
+**`lean-reply` de bedava değil.** Direktif prompt başına ~65 token ekler ve `ideal-prompt`'un
+aksine onay turlarına (`evet`, `devam`) ve slash komutlarına da eklenir. İki anahtar açık
+ve bağlam uyarısı da varken enjeksiyon en kötü durumda **619 karakter (~155 token)** olur;
+tavan `injectionBudgetChars` = 640 ve testle sabitlenmiştir.
+
+### Tembel yükleme — beklenen kazanç, garanti değil
+
+Enjeksiyon `ideal-prompt` skill'ini **yüklet_mez_**; üç triyaj sorusunu kendisi taşır
+(`triageDirective`). Prompt zaten çapalı, sınırlı ve doğrulanabilirse ~**2.400 token**'lık
+`SKILL.md` hiç açılmaz.
+
+| | |
+|---|---|
+| Kazanç | Skill hiç yüklenmezse oturum başına ~2.400 token |
+| Bedel | Triyaj satırı yüzünden prompt başına ~**+19 token** |
+| Başabaş | ~**125** optimize edilen prompt |
+| Kötü durum | Triyajı geçemeyen prompt **her ikisini de** öder |
+
+> [!NOTE]
+> Bu bir **beklenen değerdir, ölçüm değil.** Kısa oturumda ve çoğu prompt'un zaten iyi
+> yazıldığı durumda kazandırır; 125 prompt'u aşan, sürekli yeniden yazım gerektiren bir
+> oturumda kaybettirir. Kapatmak isteyen: `/oncode:ideal-prompt --close`.
+
+Onay turlarına enjekte edilmesi bilinçli: `ideal-prompt` onları baypas eder çünkü yeniden
+yazacak bir prompt yoktur, ama `evet` genellikle asıl işi **ve arkasından gelen yazıyı**
+başlatan şeydir.
+
+> [!IMPORTANT]
+> `lean-reply` için **ölçüm yapılmadı** ve bu README onun adına hiçbir yüzde iddia etmiyor.
+> `ideal-prompt` bölümündeki sayılar yalnızca ona aittir.
+
+Beğenmediyseniz çıkış tek komut: `/oncode:ideal-prompt --close` veya
+`/oncode:lean-reply --close`
 
 ## Özelleştirme
 
@@ -237,12 +287,20 @@ Tüm kurallar [`config/prompt-rules.json`](config/prompt-rules.json) içinde —
 
 | Alan | Ne yapar |
 |---|---|
+| `defaultOpen` | `ideal-prompt` anahtarının kurulumdaki hâli. `true` ile gelir |
+| `replyDefaultOpen` | `lean-reply` anahtarının kurulumdaki hâli. `true` ile gelir |
+| `replyDirective` | Hook'un enjekte ettiği cevap kuralının **tam metni**. Tonu buradan değiştirin |
 | `modes`, `defaultMode` | Çıktı modları |
 | `bypassPrefixes`, `bypassExact` | Hangi prompt'lara hiç dokunulmayacağı |
 | `structureThresholdChars` | XML iskeletinin kârlı hâle geldiği eşik |
 | `contextWarnBytes` | Bağlam uyarısı eşiği ve tekrar aralığı |
 | `injectionBudgetChars` | Enjeksiyonun karakter tavanı — testle sabitli |
 | `promptLanguage` | Optimize prompt'un dili |
+
+> [!WARNING]
+> `replyDirective` **kendi kendine yetmeli.** "lean-reply skill'ini yükle" gibi bir şeye
+> dönüştürülürse Claude her prompt'ta ~1.5k token'lık `SKILL.md`'yi okur ve skill kendi
+> kazancını tersine çevirir. Test metnin "do not load the skill" ifadesini içermesini şart koşar.
 
 > [!WARNING]
 > `bypassPrefixes` içinden `"/"` **asla çıkarılmamalı.** Çıkarılırsa `--close` komutunun
@@ -252,7 +310,7 @@ Tüm kurallar [`config/prompt-rules.json`](config/prompt-rules.json) içinde —
 ## Geliştirme
 
 ```bash
-node oncode/scripts/prompt-mode.test.mjs     # 25 test, framework yok, disk yok
+node oncode/scripts/prompt-mode.test.mjs     # 44 test, framework yok, disk yok
 node oncode/bench/bench.mjs --dry-run        # benchmark planini goster, hic harcama
 node oncode/bench/bench.mjs --case bugfix    # tek vaka olc (2 cagirim)
 ```
@@ -261,19 +319,26 @@ node oncode/bench/bench.mjs --case bugfix    # tek vaka olc (2 cagirim)
 |---|---|
 | `config/prompt-rules.json` | Tek doğruluk kaynağı — hook ve skill aynı dosyadan okur |
 | `scripts/prompt-mode.mjs` | Saf fonksiyonlar + ince CLI kabuğu |
-| `hooks/hooks.json` | `UserPromptSubmit` kaydı |
-| `skills/ideal-prompt/` | `SKILL.md` + `references/` |
+| `hooks/hooks.json` | Tek `UserPromptSubmit` kaydı — iki anahtar, tek Node süreci |
+| `commands/` | `/oncode:ideal-prompt` ve `/oncode:lean-reply` — script'e iletir. Çıkış kapısının skill çözümlemesine bağlı kalmaması için |
+| `skills/ideal-prompt/` | `SKILL.md` + `references/` — girdi yüzeyi |
+| `skills/lean-reply/` | `SKILL.md` — çıktı yüzeyi. Kural hook enjeksiyonunda taşınır, dosya prompt başına okunmaz |
 | `bench/bench.mjs` | Olcum harness'i — `claude -p` cagirir, gercek `usage` okur |
 | `bench/cases.json` | Vaka tanimlari: her biri farkli bir kural grubunu sinar |
 | `bench/fixture/` | Planli hatali mini proje + alakasiz modul gurultusu |
 
-**Fail-open yönü precode'un tersidir.** precode çökerse yazmaya *izin verir*; oncode çökerse
-*idealleştirmez*. Bozuk bir optimizer'ın prompt'lara müdahale etmesi, hiç etmemesinden kötüdür.
-Bozuk state dosyası da "kapalı" sayılır.
+**Fail-safe süreç düzeyindedir.** Script çökerse hook sessizce `exit 0` yapar ve prompt
+hiç dokunulmadan geçer — bozuk bir optimizer prompt'ları asla bloklamaz.
+
+**Durum dosyası bundan ayrıdır.** Eksik ya da bozuk bir state dosyası, kullanıcının tercihinin
+*bilinmediği* anlamına gelir ve `defaultOpen` değerine düşer. Yalnızca açıkça yazılmış bir
+boolean karar sayılır: `--close` diyen biri kapalı kalır, kırpılmış bir dosya ise açık gelmesi
+istenen özelliği sessizce kapatmaz.
 
 ## Kapatma
 
 ```
-/oncode:ideal-prompt --close     # sadece skill'i sustur
+/oncode:ideal-prompt --close     # prompt yeniden yazımını durdur
+/oncode:lean-reply --close       # cevap biçimlendirmesini durdur
 /plugin uninstall oncode         # tamamen kaldır
 ```

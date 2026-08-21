@@ -1,7 +1,7 @@
 ---
 name: ideal-prompt
 description: This skill should be used when the user asks to "optimize my prompt", "improve this prompt", "make this prompt cheaper", "reduce token usage", "write a better prompt for", "bu prompt'u iyilestir", when the user runs /oncode:ideal-prompt with or without flags, or when the oncode UserPromptSubmit hook reports that the ideal-prompt switch is open. Rewrites a submitted prompt into the form Claude Code executes with the fewest tokens - anchored to real paths, bounded in scope, verifiable, and output-capped - without changing the user's intent or scope.
-version: 0.1.0
+version: 0.2.0
 ---
 
 # ideal-prompt - rewrite the prompt for the cheapest correct trajectory
@@ -13,15 +13,19 @@ what the prompt makes the agent do.
 An ideal prompt is not shorter. It is **more bounded**.
 
 Read `${CLAUDE_PLUGIN_ROOT}/config/prompt-rules.json` first. It is the single source of
-truth for modes, bypasses, thresholds and the prompt language; the hook in
-`scripts/prompt-mode.mjs` reads the same file. Never restate those values from memory - the
-two copies would drift and the switch would stop behaving as configured.
+truth for modes, bypasses, thresholds, the prompt language and the two directive texts
+(`triageDirective`, `replyDirective`); the hook in `scripts/prompt-mode.mjs` reads the same
+file, and the flag list is derived from it. Never restate those values from memory - the two
+copies would drift and the switch would stop behaving as configured.
+
+`oncode` carries a second, independent switch: `lean-reply` shapes the answer written back
+to the user. It is not this skill's concern and closing one does not close the other.
 
 ## How this skill gets reached
 
 | Route | What it means |
 |---|---|
-| The `UserPromptSubmit` hook injected a line saying the switch is OPEN | Optimise the message that arrived with it, then follow the mode named in the injection |
+| The `UserPromptSubmit` hook's triage line sent you here | The prompt **already failed triage** - it is missing a path, a boundary or a check. Rewrite it, then follow the mode named in the injection |
 | The user ran `/oncode:ideal-prompt <text>` | Optimise that text, regardless of the switch |
 | The user ran `/oncode:ideal-prompt --<flag>` | Flag handling only. Go to step 0 and stop |
 
@@ -42,9 +46,9 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/prompt-mode.mjs" --language tr
 |---|---|
 | `--open [--mode <m>]` | Every later prompt is routed here until `--close` |
 | `--close` | Prompts pass through untouched until `--open` |
-| `--review` / `--advise` / `--auto` | Shorthand for `--mode <m>` |
+| `--review` / `--advise` / `--auto` | Shorthand for `--mode <m>`. Derived from `config.modes`, so every configured mode has one |
 | `--language <auto\|en\|tr\|...>` | Language of generated code artifacts. Not the prompt language |
-| `--status` | Report the switch without changing it |
+| `--status` | Report **both** switches without changing either |
 
 The script refuses an invalid mode or language rather than repairing it. Report the refusal
 verbatim; do not guess what the user meant.
@@ -58,8 +62,12 @@ Optimising an already-good prompt is a net loss. Check three things:
 3. **Verifiable** - is there a command that returns pass or fail?
 
 All three present: say "already ideal, proceeding" in one line and run the task as asked.
-Most prompts that reach this skill while the switch is open end here. That is the design,
-not a failure.
+
+**The hook already asked this question.** `triageDirective` carries the same three checks in
+the injection, precisely so that a prompt passing them never causes this file to be loaded -
+opening it costs ~2400 tokens and the answer would have been "already ideal". So arriving
+here usually means at least one check failed. Re-run it anyway: the hook cannot read the
+repository, and a path that looks real in the prompt may not exist.
 
 ## Step 2 - name the waste
 

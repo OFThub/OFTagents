@@ -11,7 +11,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import { decide, declinePath, denyPayload } from "./docs-gate.mjs";
-import { contextPayload, sessionAdvice } from "./session-check.mjs";
+import { CONTEXT_BUDGET_CHARS, contextPayload, sessionAdvice } from "./session-check.mjs";
 
 const ROOT = path.resolve("/proj");
 
@@ -193,4 +193,26 @@ test("the gate and the session check agree on what is missing", () => {
   const fromSession = sessionAdvice({ source: "startup", projectRoot: ROOT, config, ...fs });
   assert.deepEqual(fromGate, fromSession);
   assert.deepEqual(fromGate, ["CLAUDE.md", "CHANGELOG.md"]);
+});
+
+test("the SessionStart injection stays inside its budget", () => {
+  // Every fresh conversation in an undocumented project pays for this text. It had
+  // no ceiling at all until now, while the sibling plugin enforced one - so this is
+  // the guard against it growing a paragraph at a time.
+  const text = contextPayload(
+    ["README.md", "CLAUDE.md", "CHANGELOG.md"],
+    "s".repeat(128), // the longest session id declinePath() will accept
+  ).hookSpecificOutput.additionalContext;
+  assert.ok(
+    text.length <= CONTEXT_BUDGET_CHARS,
+    `${text.length} > ${CONTEXT_BUDGET_CHARS}`,
+  );
+});
+
+test("the injection names every missing document, so the count cannot silently truncate", () => {
+  const text = contextPayload(["README.md", "CLAUDE.md", "CHANGELOG.md"], "s1")
+    .hookSpecificOutput.additionalContext;
+  for (const doc of ["README.md", "CLAUDE.md", "CHANGELOG.md"]) {
+    assert.ok(text.includes(doc), doc);
+  }
 });

@@ -44,6 +44,18 @@ export function sessionAdvice({ source, projectRoot, config, fileExists, listRoo
   return missing.length === 0 ? null : missing;
 }
 
+/**
+ * Ceiling for the SessionStart injection, kept beside the text it constrains rather
+ * than in required-docs.json: that file is data shared with the gate, and a number
+ * only a test reads has no business there. oncode keeps its equivalent in config
+ * because the directive text lives there too.
+ *
+ * Fires once per fresh conversation, not per prompt, so the cost is small - this is a
+ * guard against unnoticed growth, not an optimisation. Headroom is deliberate: the
+ * absolute path to this script is part of the payload and is longer on some machines.
+ */
+export const CONTEXT_BUDGET_CHARS = 1000;
+
 export function contextPayload(missing, sessionId) {
   const decline = `node "${SELF}" --decline ${sessionId}`;
   return {

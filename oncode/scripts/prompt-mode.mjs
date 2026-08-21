@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// oncode — the ideal-prompt switch and the UserPromptSubmit entry point.
+// oncode — the ideal-prompt and lean-reply switches, and the UserPromptSubmit entry point.
 //
 // Shape follows precode/scripts/docs-gate.mjs: pure functions are exported, a thin
 // CLI shell sits at the bottom. Every dependency that touches the outside world
@@ -30,6 +30,27 @@ export function loadConfig(readFile = () => readFileSync(CONFIG_PATH, "utf8")) {
   return JSON.parse(readFile());
 }
 
+// Every flag the CLI answers to, derived rather than written down twice.
+//
+// The mode shortcuts come from config.modes, so adding a mode to the config gives
+// it a working `--<mode>` for free. This exists because the docs once promised
+// `--review`, `--advise` and `--auto` while runFlags answered "unknown flag" to
+// all three: a hand-kept second list drifted, exactly as this repo's own rule warns.
+export const flagList = (config) => [
+  "--open",
+  "--close",
+  "--mode",
+  "--language",
+  "--status",
+  "--reply-open",
+  "--reply-close",
+  ...config.modes.map((m) => `--${m}`),
+];
+
+// The reply switch may ride along with any of these; on its own it is the command.
+export const primaryFlags = (config) =>
+  flagList(config).filter((f) => f !== "--reply-open" && f !== "--reply-close");
+
 export function statePath(homedir, config) {
   return path.join(homedir, ...config.stateDir.split("/"), "state.json");
 }
@@ -40,7 +61,10 @@ export const promptOf = (payload) => payload?.prompt ?? payload?.user_prompt ?? 
 
 export function defaultState(config) {
   return {
-    open: false,
+    // Configured, not hardcoded: flipping the shipped default must not need a
+    // code change. Ships open; `--close` is one command away.
+    open: config.defaultOpen === true,
+    replyOpen: config.replyDefaultOpen === true,
     mode: config.defaultMode,
     language: config.defaultCodeLanguage,
     lastWarnBytes: 0,
@@ -54,9 +78,15 @@ export function normalizeLanguage(value, config) {
   return new RegExp(config.languagePattern).test(value) ? value : null;
 }
 
-// Pure: takes the file's text, never the file. Anything unparseable degrades to
-// the default state, whose `open` is false — a corrupt state file must not leave
-// the switch stuck on.
+// Pure: takes the file's text, never the file.
+//
+// A missing file and a corrupt file are the same situation: the user's choice is
+// unknown, so both fall back to the configured default. Only an explicit boolean
+// counts as a decision — someone who ran `--close` keeps it, and a file that was
+// merely truncated does not silently disable a feature meant to be on.
+//
+// The real safety net is elsewhere and unchanged: if this script throws, the hook
+// exits 0 with no output and the prompt goes through untouched.
 export function readState(raw, config) {
   const fallback = defaultState(config);
   if (typeof raw !== "string" || raw.trim() === "") return fallback;
@@ -73,7 +103,10 @@ export function readState(raw, config) {
     Number.isInteger(parsed.lastWarnBytes) && parsed.lastWarnBytes >= 0 ? parsed.lastWarnBytes : 0;
 
   return {
-    open: parsed.open === true,
+    open: typeof parsed.open === "boolean" ? parsed.open : fallback.open,
+    // Additive: a state file written before lean-reply existed has no such field,
+    // which is absence, not a decision, so it takes the configured default.
+    replyOpen: typeof parsed.replyOpen === "boolean" ? parsed.replyOpen : fallback.replyOpen,
     mode: config.modes.includes(parsed.mode) ? parsed.mode : fallback.mode,
     language: normalizeLanguage(parsed.language, config) ?? fallback.language,
     lastWarnBytes,
@@ -113,6 +146,22 @@ export function shouldOptimize({ prompt, state, config }) {
   return { optimize: true, reason: "optimize" };
 }
 
+// The reply switch. Deliberately does NOT share shouldOptimize's bypasses.
+//
+// The "/" bypass there is a deadlock guard: without it the `--close` command
+// itself would be rewritten and the switch could never be turned off again.
+// Nothing like that applies here - this directive shapes the answer and never
+// touches the prompt, so there is no command it can swallow.
+//
+// A bare "evet" is skipped there and kept here for the same reason in reverse:
+// a confirmation is usually what kicks off the real work and the write-up that
+// follows it, which is exactly where the model rambles. Passing on those to save
+// ~60 tokens would give up most of the saving.
+export function shouldShapeReply({ prompt, state }) {
+  if (!state?.replyOpen) return false;
+  return typeof prompt === "string" && prompt.trim() !== "";
+}
+
 // Context pressure, measured for free: one stat() on the transcript, no parsing.
 //
 // ponytail: the plan called for a turn counter with a cooldown, but the
@@ -142,15 +191,30 @@ export function contextPressure({ payload, state, config, statSize }) {
 // Kept deliberately short: this text is injected on every non-bypassed prompt.
 // A "token optimizer" that spends 500 tokens per prompt to save tokens is a net
 // loss, so the budget is enforced by config and pinned by a test.
-export function injectionText(state, pressure, config) {
-  const lines = [
-    `oncode: ideal-prompt is OPEN (mode: ${state.mode}, code language: ${state.language}).`,
-    `Apply the ideal-prompt skill to the message above before acting on it. ${
-      MODE_HINT[state.mode] ?? ""
-    }`.trim(),
-  ];
+// `parts` names which switches are open. They are independent: either block can
+// appear alone, and when both are closed the caller never reaches this function.
+export function injectionText(state, pressure, config, parts = { optimize: true, reply: false }) {
+  const lines = [];
 
-  if (pressure?.warn) {
+  if (parts.optimize) {
+    lines.push(
+      `oncode: ideal-prompt is OPEN (mode: ${state.mode}, code language: ${state.language}).`,
+      // Lazy load. The triage test is ~20 tokens; the skill it guards is ~2400, and
+      // the skill's own text says most prompts that reach it end at exactly this
+      // test. Carrying the question here means the file is opened only by a prompt
+      // that actually needs rewriting. Break-even is ~125 optimized prompts in one
+      // session, and a prompt that fails triage pays both - an expected gain, not a
+      // guaranteed one.
+      `${config.triageDirective} ${MODE_HINT[state.mode] ?? ""}`.trim(),
+    );
+  }
+
+  // The whole rule travels inside this string on purpose. Pointing at lean-reply's
+  // SKILL.md instead would make the model read ~1.5k tokens on EVERY prompt in
+  // order to save output tokens - the skill would burn more than it saves.
+  if (parts.reply) lines.push(config.replyDirective);
+
+  if (pressure?.warn && lines.length > 0) {
     const mb = Math.round(pressure.bytes / 1e6);
     lines.push(`Transcript is ~${mb}MB — offer /compact <focus> (same task) or /clear (new task).`);
   }
@@ -158,11 +222,11 @@ export function injectionText(state, pressure, config) {
   return lines.join("\n");
 }
 
-export function hookPayload(state, pressure, config) {
+export function hookPayload(state, pressure, config, parts) {
   return {
     hookSpecificOutput: {
       hookEventName: "UserPromptSubmit",
-      additionalContext: injectionText(state, pressure, config),
+      additionalContext: injectionText(state, pressure, config, parts),
     },
   };
 }
@@ -186,22 +250,42 @@ async function readStdin() {
 }
 
 function report(state) {
-  const status = state.open ? "OPEN" : "closed";
-  return `oncode: ideal-prompt ${status} (mode: ${state.mode}, code language: ${state.language}).`;
+  const ideal = state.open ? "OPEN" : "closed";
+  const reply = state.replyOpen ? "OPEN" : "closed";
+  return (
+    `oncode: ideal-prompt ${ideal} (mode: ${state.mode}, code language: ${state.language})` +
+    ` | lean-reply ${reply}.`
+  );
 }
 
-function runFlags(argv, state, config) {
+export function runFlags(argv, state, config, write = writeState) {
+  // The two switches are independent, so `--open --reply-open` has to set both.
+  // Reading the reply flag from anywhere in argv - rather than only from argv[0] -
+  // is a longer branch than the rest, but silently dropping a flag the user typed
+  // is the worse outcome. Last occurrence wins, as CLI flags normally do.
+  const replyFlags = argv.filter((a) => a === "--reply-open" || a === "--reply-close");
+  const working = replyFlags.length
+    ? { ...state, replyOpen: replyFlags[replyFlags.length - 1] === "--reply-open" }
+    : state;
+
   const [flag] = argv;
 
-  if (flag === "--status") return report(state);
+  // A reply flag on its own is the whole command; otherwise it rides along with
+  // the primary flag below and is written by that branch.
+  if (replyFlags.length && !primaryFlags(config).includes(flag)) {
+    write(working, config);
+    return report(working);
+  }
+
+  if (flag === "--status") return report(working);
 
   if (flag === "--close") {
-    writeState({ ...state, open: false }, config);
+    write({ ...working, open: false }, config);
     return "oncode: ideal-prompt closed. Prompts pass through untouched until --open.";
   }
 
   if (flag === "--open") {
-    const next = { ...state, open: true };
+    const next = { ...working, open: true };
     const at = argv.indexOf("--mode");
     if (at !== -1) {
       const mode = argv[at + 1];
@@ -210,7 +294,16 @@ function runFlags(argv, state, config) {
       }
       next.mode = mode;
     }
-    writeState(next, config);
+    write(next, config);
+    return report(next);
+  }
+
+  // `--review` is `--mode review`. Derived from config.modes, so a new mode gets
+  // its shortcut automatically and the flag table can never fall behind the code.
+  const shorthand = config.modes.find((m) => flag === `--${m}`);
+  if (shorthand) {
+    const next = { ...working, mode: shorthand };
+    write(next, config);
     return report(next);
   }
 
@@ -219,8 +312,8 @@ function runFlags(argv, state, config) {
     if (!config.modes.includes(mode)) {
       return `oncode: invalid mode ${JSON.stringify(mode)}. Valid: ${config.modes.join(", ")}`;
     }
-    const next = { ...state, mode };
-    writeState(next, config);
+    const next = { ...working, mode };
+    write(next, config);
     return report(next);
   }
 
@@ -229,12 +322,12 @@ function runFlags(argv, state, config) {
     if (language === null) {
       return `oncode: invalid language ${JSON.stringify(argv[1])}. Use "auto" or a tag like "en", "tr", "pt-BR".`;
     }
-    const next = { ...state, language };
-    writeState(next, config);
+    const next = { ...working, language };
+    write(next, config);
     return report(next);
   }
 
-  return `oncode: unknown flag ${JSON.stringify(flag)}. Try --open, --close, --mode, --language, --status.`;
+  return `oncode: unknown flag ${JSON.stringify(flag)}. Try: ${flagList(config).join(", ")}.`;
 }
 
 async function main(argv) {
@@ -247,8 +340,10 @@ async function main(argv) {
   }
 
   const payload = JSON.parse(await readStdin());
-  const verdict = shouldOptimize({ prompt: promptOf(payload), state, config });
-  if (!verdict.optimize) return; // silent, exit 0
+  const prompt = promptOf(payload);
+  const verdict = shouldOptimize({ prompt, state, config });
+  const reply = shouldShapeReply({ prompt, state });
+  if (!verdict.optimize && !reply) return; // both switches closed: silent, exit 0
 
   const pressure = contextPressure({
     payload,
@@ -258,7 +353,8 @@ async function main(argv) {
   });
   if (pressure.warn) writeState({ ...state, lastWarnBytes: pressure.bytes }, config);
 
-  console.log(JSON.stringify(hookPayload(state, pressure, config)));
+  const parts = { optimize: verdict.optimize, reply };
+  console.log(JSON.stringify(hookPayload(state, pressure, config, parts)));
 }
 
 // Only run the shell when executed directly, so the test can import the module.

@@ -6,6 +6,8 @@ import test from "node:test";
 
 import {
   MODE_HINT,
+  flagList,
+  runFlags,
   contextPressure,
   defaultState,
   hookPayload,
@@ -15,12 +17,14 @@ import {
   promptOf,
   readState,
   shouldOptimize,
+  shouldShapeReply,
   statePath,
 } from "./prompt-mode.mjs";
 
 // The real config, so a broken or renamed field fails here rather than in production.
 const config = loadConfig();
 const open = (over = {}) => ({ ...defaultState(config), open: true, ...over });
+const closed = (over = {}) => ({ ...defaultState(config), open: false, ...over });
 
 // --- the switch must always be closable ------------------------------------
 
@@ -45,9 +49,21 @@ test("every slash command is bypassed, not just oncode's own", () => {
 // --- the switch ------------------------------------------------------------
 
 test("closed: the hook stays silent", () => {
-  const verdict = shouldOptimize({ prompt: "fix the login bug", state: defaultState(config), config });
+  const verdict = shouldOptimize({ prompt: "fix the login bug", state: closed(), config });
   assert.equal(verdict.optimize, false);
   assert.equal(verdict.reason, "closed");
+});
+
+test("the shipped default is open, and it comes from config rather than the code", () => {
+  assert.equal(config.defaultOpen, true);
+  assert.equal(defaultState(config).open, true);
+  // Flipping the shipped default must be a config edit, not a code edit.
+  assert.equal(defaultState({ ...config, defaultOpen: false }).open, false);
+});
+
+test("with no state file at all, a normal prompt is optimized", () => {
+  const verdict = shouldOptimize({ prompt: "fix the login bug", state: readState("", config), config });
+  assert.equal(verdict.optimize, true);
 });
 
 test("open: a normal prompt is routed to the skill", () => {
@@ -84,10 +100,22 @@ test("promptOf reads both documented and observed field names", () => {
 
 // --- state -----------------------------------------------------------------
 
-test("corrupt state is treated as closed, never as open", () => {
+test("a missing or corrupt state file falls back to the configured default", () => {
+  // Unknown is unknown: a truncated file is not evidence that the user ran --close,
+  // so it must not silently disable a feature that ships on.
   for (const raw of ["", "   ", "{not json", "null", "[]", '"a string"', undefined, 42]) {
-    assert.equal(readState(raw, config).open, false, String(raw));
+    assert.equal(readState(raw, config).open, config.defaultOpen, String(raw));
   }
+  const shutByConfig = { ...config, defaultOpen: false };
+  assert.equal(readState("{not json", shutByConfig).open, false);
+});
+
+test("an explicit false survives: --close is a decision, not a missing value", () => {
+  assert.equal(readState(JSON.stringify({ open: false }), config).open, false);
+  assert.equal(readState(JSON.stringify({ open: true }), config).open, true);
+  // Anything that is not a boolean is absence, not a decision.
+  assert.equal(readState(JSON.stringify({ open: "false" }), config).open, config.defaultOpen);
+  assert.equal(readState(JSON.stringify({ mode: "review" }), config).open, config.defaultOpen);
 });
 
 test("a state file claiming a bogus mode falls back, it is not coerced to something near", () => {
@@ -97,9 +125,16 @@ test("a state file claiming a bogus mode falls back, it is not coerced to someth
 });
 
 test("mode, language and lastWarnBytes round-trip through the state text", () => {
-  const raw = JSON.stringify({ open: true, mode: "auto", language: "tr", lastWarnBytes: 4000000 });
+  const raw = JSON.stringify({
+    open: true,
+    replyOpen: false,
+    mode: "auto",
+    language: "tr",
+    lastWarnBytes: 4000000,
+  });
   assert.deepEqual(readState(raw, config), {
     open: true,
+    replyOpen: false,
     mode: "auto",
     language: "tr",
     lastWarnBytes: 4000000,
@@ -221,6 +256,51 @@ test("the injection names the active mode and its behaviour", () => {
   assert.match(text, /Do not execute/);
 });
 
+// --- lazy loading of the ideal-prompt skill --------------------------------
+
+test("the injection carries the triage test instead of ordering a skill load", () => {
+  // The point of the whole exercise: a prompt that passes triage must never cause
+  // the ~2400-token SKILL.md to be opened, so the question has to travel inline.
+  const text = injectionText(open(), { warn: false }, config, { optimize: true, reply: false });
+  assert.ok(text.includes(config.triageDirective));
+  assert.match(text, /skip the skill/i);
+});
+
+test("the triage directive states both branches, not just the cheap one", () => {
+  // Half a rule is worse than none: without the else-branch a prompt that fails
+  // triage would be run as written, which is the expensive outcome this guards.
+  assert.match(config.triageDirective, /all three/i);
+  assert.match(config.triageDirective, /ideal-prompt/);
+});
+
+// --- the documented flag surface actually exists ---------------------------
+
+test("every flag the CLI advertises is actually handled", () => {
+  // The regression guard for a real defect: --review, --advise and --auto were
+  // documented in SKILL.md and the README while runFlags answered "unknown flag"
+  // to all three. The writer is injected so this stays a disk-free test.
+  const noWrite = () => {};
+  const argFor = { "--mode": "review", "--language": "tr" };
+  for (const flag of flagList(config)) {
+    const argv = argFor[flag] ? [flag, argFor[flag]] : [flag];
+    const out = runFlags(argv, open(), config, noWrite);
+    assert.ok(!/unknown flag/.test(out), `${flag} fell through: ${out}`);
+  }
+});
+
+test("a mode shortcut sets exactly that mode", () => {
+  for (const mode of config.modes) {
+    let written = null;
+    const out = runFlags([`--${mode}`], open({ mode: "review" }), config, (next) => (written = next));
+    assert.equal(written.mode, mode, mode);
+    assert.match(out, new RegExp(mode));
+  }
+});
+
+test("a flag that really is unknown still says so", () => {
+  assert.match(runFlags(["--nope"], open(), config, () => {}), /unknown flag/);
+});
+
 test("the pressure line appears only when warning, and offers both remedies", () => {
   const quiet = injectionText(open(), { warn: false, bytes: 10 }, config);
   assert.ok(!quiet.includes("/compact"));
@@ -245,4 +325,94 @@ test("the rules live in config, not in the code", () => {
   assert.ok(Number.isInteger(config.structureThresholdChars));
   assert.ok(Number.isInteger(config.injectionBudgetChars));
   assert.ok(normalizeLanguage(config.defaultCodeLanguage, config));
+});
+
+// --- lean-reply: the second, independent switch ----------------------------
+
+test("the shipped lean-reply default is open, and it comes from config", () => {
+  assert.equal(config.replyDefaultOpen, true);
+  assert.equal(defaultState(config).replyOpen, true);
+  assert.equal(defaultState({ ...config, replyDefaultOpen: false }).replyOpen, false);
+});
+
+test("a state file written before lean-reply existed still opens the reply switch", () => {
+  // Absence of the field is not a decision to close it, so it takes the default.
+  const legacy = JSON.stringify({ open: true, mode: "advise", language: "tr" });
+  assert.equal(readState(legacy, config).replyOpen, config.replyDefaultOpen);
+});
+
+test("an explicit replyOpen:false survives, anything non-boolean does not", () => {
+  assert.equal(readState(JSON.stringify({ replyOpen: false }), config).replyOpen, false);
+  assert.equal(readState(JSON.stringify({ replyOpen: "false" }), config).replyOpen, true);
+  assert.equal(readState("{not json", config).replyOpen, config.replyDefaultOpen);
+});
+
+test("shouldShapeReply follows its own switch and ignores the prompt one", () => {
+  assert.equal(shouldShapeReply({ prompt: "fix it", state: open({ replyOpen: false }) }), false);
+  assert.equal(shouldShapeReply({ prompt: "fix it", state: closed({ replyOpen: true }) }), true);
+});
+
+test("shouldShapeReply skips only an empty prompt", () => {
+  for (const prompt of ["", "   ", null, 42]) {
+    assert.equal(shouldShapeReply({ prompt, state: open() }), false, JSON.stringify(prompt));
+  }
+  assert.equal(shouldShapeReply({ prompt: "fix it", state: open() }), true);
+});
+
+test("slash commands and confirmations DO get the reply directive", () => {
+  // Deliberate divergence from shouldOptimize, pinned so it is not "tidied up"
+  // into sharing the bypass list. The "/" bypass there is a deadlock guard for a
+  // rewrite; this directive rewrites nothing, so it cannot eat the --close command.
+  // And a bare "evet" is where the model rambles most - it starts the real work.
+  for (const prompt of ["/oncode:lean-reply --close", "evet", "!ls -la"]) {
+    assert.equal(shouldOptimize({ prompt, state: open(), config }).optimize, false, prompt);
+    assert.equal(shouldShapeReply({ prompt, state: open() }), true, prompt);
+  }
+});
+
+test("with only lean-reply open, the injection is the directive alone", () => {
+  const text = injectionText(closed(), { warn: false }, config, { optimize: false, reply: true });
+  assert.equal(text, config.replyDirective);
+  assert.ok(!text.includes("ideal-prompt"));
+});
+
+test("with only ideal-prompt open, the directive is absent", () => {
+  const text = injectionText(open(), { warn: false }, config, { optimize: true, reply: false });
+  assert.match(text, /ideal-prompt is OPEN/);
+  assert.ok(!text.includes(config.replyDirective));
+});
+
+test("both switches open: both blocks appear, and the pressure line still lands", () => {
+  const text = injectionText(open(), { warn: true, bytes: 3000000 }, config, {
+    optimize: true,
+    reply: true,
+  });
+  assert.match(text, /ideal-prompt is OPEN/);
+  assert.ok(text.includes(config.replyDirective));
+  assert.ok(text.includes("/compact"));
+});
+
+test("the combined worst case still fits the injection budget", () => {
+  // The regression guard behind raising injectionBudgetChars. Longest mode hint,
+  // longest language tag the pattern allows, both switches open, pressure warning on.
+  const language = "aa-bbbbbbbb";
+  assert.ok(normalizeLanguage(language, config), "the longest legal tag must stay legal");
+  for (const mode of config.modes) {
+    const text = injectionText(open({ mode, language }), { warn: true, bytes: 999000000 }, config, {
+      optimize: true,
+      reply: true,
+    });
+    assert.ok(
+      text.length <= config.injectionBudgetChars,
+      `${mode}: ${text.length} > ${config.injectionBudgetChars}`,
+    );
+  }
+});
+
+test("the reply directive is self-sufficient and says so", () => {
+  // If this ever degrades into "load the lean-reply skill", every prompt pays
+  // ~1.5k tokens to read SKILL.md in order to save output tokens - the skill
+  // would then cost more than it saves.
+  assert.ok(config.replyDirective.length > 0);
+  assert.match(config.replyDirective, /do not load the skill/i);
 });
